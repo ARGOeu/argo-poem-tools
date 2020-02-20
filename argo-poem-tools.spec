@@ -56,3 +56,7 @@ rm -rf $RPM_BUILD_ROOT
 %{python2_sitelib}/%{underscore %{name}}/*.py[co]
 %endif
 %defattr(-,root,root)
+
+%changelog
+* Thu Feb 20 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.0-1%{?dist}
+- ARGO-2230 Create script which will install packages for given metric profiles 
