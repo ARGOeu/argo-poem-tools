@@ -5,8 +5,8 @@ Name:          argo-poem-tools
 Version:       0.1.0
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
-License:       GPL
-Group:         Development/Libraries
+License:       ASL 2.0
+Group:         Development/System
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Prefix:        %{_prefix}
 BuildArch:     noarch
@@ -18,6 +18,7 @@ Requires:      python-argparse
 BuildRequires: python2-devel
 %endif
 Requires:      python-requests
+
 
 %description
 Script which installs packages on ARGO mon boxes.
@@ -48,6 +49,7 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %files -f INSTALLED_FILES
+%defattr(-,root,root)
 %if 0%{?el6}
 %dir %{python_sitelib}/%{underscore %{name}}/
 %{python_sitelib}/%{underscore %{name}}/*.py[co]
@@ -55,8 +57,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{python2_sitelib}/%{underscore %{name}}/
 %{python2_sitelib}/%{underscore %{name}}/*.py[co]
 %endif
-%defattr(-,root,root)
 
 %changelog
 * Thu Feb 20 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.0-1%{?dist}
-- ARGO-2230 Create script which will install packages for given metric profiles 
+- ARGO-2230 Create script which will install packages for given metric profiles
