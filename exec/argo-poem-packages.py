@@ -12,7 +12,7 @@ import sys
 
 
 def main():
-    logger = logging.getLogger('install_packages')
+    logger = logging.getLogger('argo-poem-packages')
     logger.setLevel(logging.INFO)
 
     # setting up logging to file
