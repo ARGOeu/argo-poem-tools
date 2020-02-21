@@ -1,34 +1,63 @@
 %define underscore() %(echo %1 | sed 's/-/_/g')
 
-Summary: Script which installs packages on ARGO mon boxes.
-Name: argo-poem-tools
-Version: 0.1.0
-Release: 1%{?dist}
-Source0: %{name}-%{version}.tar.gz
-License: GPL
-Group: Development/Libraries
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Prefix: %{_prefix}
-BuildArch: noarch
-Requires: python-requests
-Requires: python-argparse
+Summary:       Script installs packages on ARGO mon boxes.
+Name:          argo-poem-tools
+Version:       0.1.0
+Release:       1%{?dist}
+Source0:       %{name}-%{version}.tar.gz
+License:       ASL 2.0
+Group:         Development/System
+BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+Prefix:        %{_prefix}
+BuildArch:     noarch
+
+%if 0%{?el6}
+BuildRequires: python-devel
+Requires:      python-argparse
+%else
+BuildRequires: python2-devel
+%endif
+Requires:      python-requests
+
 
 %description
 Script which installs packages on ARGO mon boxes.
 
+
 %prep
 %setup -q
 
+
 %build
-python setup.py build
+%if 0%{?el6}
+%{py_build}
+%else
+%{py2_build}
+%endif
+
 
 %install
-python setup.py install --skip-build --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
+%if 0%{?el6}
+%{py_install "--record=INSTALLED_FILES" }
+%else
+%{py2_install "--record=INSTALLED_FILES" }
+%endif
+
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
+
 %files -f INSTALLED_FILES
+%defattr(-,root,root)
+%if 0%{?el6}
 %dir %{python_sitelib}/%{underscore %{name}}/
 %{python_sitelib}/%{underscore %{name}}/*.py[co]
-%defattr(-,root,root)
+%else
+%dir %{python2_sitelib}/%{underscore %{name}}/
+%{python2_sitelib}/%{underscore %{name}}/*.py[co]
+%endif
+
+%changelog
+* Thu Feb 20 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.0-1%{?dist}
+- ARGO-2230 Create script which will install packages for given metric profiles

@@ -8,5 +8,5 @@ setup(
     description='Script which installs packages on ARGO mon boxes.',
     package_dir={'argo_poem_tools': 'modules'},
     packages=['argo_poem_tools'],
-    scripts=['exec/install_packages.py']
+    scripts=['exec/argo-poem-packages.py']
 )

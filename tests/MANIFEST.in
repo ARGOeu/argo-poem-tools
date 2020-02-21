@@ -1,8 +1,0 @@
-include modules/*
-include tests/*
-include exec/*
-include argo-poem-tools.spec
-
-recursive-exclude test *.pyc *.pyo
-recursive-exclude modules *.pyc *.pyo
-recursive-exclude exec *.pyc *.pyo
