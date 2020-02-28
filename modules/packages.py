@@ -13,7 +13,10 @@ class Packages:
         list_packages = []
         for key, value in self.data[0].items():
             for item in value['packages']:
-                list_packages.append((item['name'], item['version']))
+                if item['version'] == 'present':
+                    list_packages.append((item['name'],))
+                else:
+                    list_packages.append((item['name'], item['version']))
 
         return list_packages
 
@@ -29,7 +32,8 @@ class Packages:
                     [x[0] for x in installed].index(item[0])
                 ][1]
 
-                if item not in self.exact_packages_not_found():
+                if len(item) > 1 and \
+                        item not in self.exact_packages_not_found():
                     if rpm.labelCompare(
                             ('mock', item[1], 'mock'),
                             ('mock', installed_ver, 'mock')
@@ -43,7 +47,10 @@ class Packages:
 
             else:
                 if item not in self.exact_packages_not_found():
-                    install.append(item[0] + '-' + item[1])
+                    if len(item) == 2:
+                        install.append(item[0] + '-' + item[1])
+                    else:
+                        install.append(item[0])
 
                 else:
                     if item[0] in [
@@ -60,7 +67,7 @@ class Packages:
 
         pkg_not_found = []
         for item in self.list_of_packages():
-            if item not in avail:
+            if len(item) > 1 and item not in avail:
                 pkg_not_found.append(item)
 
         return pkg_not_found
@@ -71,7 +78,7 @@ class Packages:
 
         pkg_wrong_version = []
         for item in self.list_of_packages():
-            if item in self.exact_packages_not_found() and \
+            if len(item) > 1 and item in self.exact_packages_not_found() and \
                     item[0] in [a[0] for a in avail]:
                 pkg_wrong_version.append(
                     avail[[a[0] for a in avail].index(item[0])]
@@ -80,19 +87,23 @@ class Packages:
         return pkg_wrong_version
 
     def packages_not_found(self):
+        pkgs = self.yb.pkgSack.returnPackages()
+        avail = [pkg.name for pkg in pkgs]
+
         pkgs_not_found = []
-        for pkg in self.exact_packages_not_found():
-            if pkg[0] not in [
-                p[0] for p in self.packages_found_with_different_version()
-            ]:
-                pkgs_not_found.append(pkg)
+        for item in self.list_of_packages():
+            if item[0] not in avail:
+                pkgs_not_found.append(item)
 
         return pkgs_not_found
 
     def get_packages_not_found(self):
         pkgs_not_found = []
         for pkg in self.packages_not_found():
-            pkgs_not_found.append('%s-%s' % (pkg[0], pkg[1]))
+            if len(pkg) == 2:
+                pkgs_not_found.append('%s-%s' % (pkg[0], pkg[1]))
+            else:
+                pkgs_not_found.append('%s' % pkg[0])
 
         return pkgs_not_found
 
