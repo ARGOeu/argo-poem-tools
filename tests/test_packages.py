@@ -47,7 +47,7 @@ data = [
             "packages": [
                 {
                     "name": "nordugrid-arc-nagios-plugins",
-                    "version": "2.0.0"
+                    "version": "present"
                 }
             ]
         }
@@ -63,7 +63,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(
             self.pkgs.list_of_packages(),
             [
-                ('nordugrid-arc-nagios-plugins', '2.0.0'),
+                ('nordugrid-arc-nagios-plugins',),
                 ('nagios-plugins-fedcloud', '0.5.0'),
                 ('nagios-plugins-igtf', '1.4.0'),
                 ('nagios-plugins-globus', '0.1.5')
@@ -78,22 +78,27 @@ class PackageTests(unittest.TestCase):
         mock3 = mock.Mock(version='1.5.0')
         mock4 = mock.Mock(version='1.4.0')
         mock5 = mock.Mock(version='0.1.5')
+        mock6 = mock.Mock(version='2.0.0')
         mock1.name = 'nagios-plugins-fedcloud'
         mock2.name = 'nagios-plugins-fedcloud'
         mock3.name = 'nagios-plugins-igtf'
         mock4.name = 'nagios-plugins-igtf'
         mock5.name = 'nagios-plugins-globus'
+        mock6.name = 'nordugrid-arc-nagios-plugins'
         mock_yumbase1.returnPackages.return_value = [mock2, mock3]
         mock_yumbase2.returnPackages.return_value = [
-            mock1, mock2, mock3, mock4, mock5
+            mock1, mock2, mock3, mock4, mock5, mock6
         ]
 
         install, downgrade = self.pkgs.get_packages()
 
         self.assertEqual(
             install,
-            ['nagios-plugins-fedcloud-0.5.0',
-             'nagios-plugins-globus-0.1.5']
+            [
+                'nordugrid-arc-nagios-plugins',
+                'nagios-plugins-fedcloud-0.5.0',
+                'nagios-plugins-globus-0.1.5'
+             ]
         )
         self.assertEqual(downgrade, ['nagios-plugins-igtf-1.4.0'])
 
@@ -165,17 +170,15 @@ class PackageTests(unittest.TestCase):
 
     @mock.patch('yum.YumBase.pkgSack')
     def test_get_packages_not_found(self, mock_yumbase):
-        mock1 = mock.Mock(version='2.0.0')
-        mock2 = mock.Mock(version='0.6.0')
-        mock3 = mock.Mock(version='1.4.0')
-        mock1.name = 'nordugrid-arc-nagios-plugins'
-        mock2.name = 'nagios-plugins-fedcloud'
-        mock3.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2, mock3]
+        mock1 = mock.Mock(version='0.6.0')
+        mock2 = mock.Mock(version='1.4.0')
+        mock1.name = 'nagios-plugins-fedcloud'
+        mock2.name = 'nagios-plugins-igtf'
+        mock_yumbase.returnPackages.return_value = [mock1, mock2]
 
         self.assertEqual(
             self.pkgs.get_packages_not_found(),
-            ['nagios-plugins-globus-0.1.5']
+            ['nordugrid-arc-nagios-plugins', 'nagios-plugins-globus-0.1.5']
         )
 
     @mock.patch('yum.YumBase.pkgSack')
@@ -223,13 +226,13 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(
             self.pkgs.get_packages_installed_with_versions_as_requested(
                 [
-                    'nordugrid-arc-nagios-plugins-2.0.0',
+                    'nordugrid-arc-nagios-plugins',
                     'nagios-plugins-fedcloud-0.5.0',
                     'nagios-plugins-igtf'
                 ]
             ),
             [
-                'nordugrid-arc-nagios-plugins-2.0.0',
+                'nordugrid-arc-nagios-plugins',
                 'nagios-plugins-fedcloud-0.5.0'
             ]
         )
