@@ -23,5 +23,6 @@ setup(
     url='https://github.com/ARGOeu/argo-poem-tools',
     package_dir={'argo_poem_tools': 'modules'},
     packages=['argo_poem_tools'],
+    data_files=[('/etc/argo-poem-tools/', ['config/argo-poem-tools.conf'])],
     scripts=['exec/argo-poem-packages.py']
 )
