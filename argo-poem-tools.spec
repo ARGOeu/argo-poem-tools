@@ -2,7 +2,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.1.1
+Version:       0.1.2
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -59,6 +59,8 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Mar 16 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.2-1%{?dist}
+- ARGO-2292 Load parameters from config file
 * Fri Feb 28 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.1-1%{?dist}
 - ARGO-2266 Refactor argo-poem-tools to handle new tags in package
 * Thu Feb 20 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.0-1%{?dist}

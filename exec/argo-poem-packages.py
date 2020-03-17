@@ -1,14 +1,14 @@
 #!/usr/bin/python
-import argparse
+import ConfigParser
 import logging
+import subprocess
+import sys
 
+import requests
+from argo_poem_tools.config import Config
 from argo_poem_tools.packages import Packages
 from argo_poem_tools.repos import build_api_url, create_yum_repo_file, \
     get_repo_data
-
-import requests
-import subprocess
-import sys
 
 
 def main():
@@ -25,56 +25,27 @@ def main():
     # add the handler to the root logger
     logger.addHandler(logfile)
 
-    parser = argparse.ArgumentParser(
-        description='Install packages for given metric profiles'
-    )
-    parser.add_argument(
-        '-t', '--token', dest='token', type=str, help='POEM token'
-    )
-    parser.add_argument(
-        '-p', '--profiles', dest='profile', type=str, nargs='*',
-        help='space separated list of metric profiles'
-    )
-    parser.add_argument(
-        '-H', '--hostname', dest='hostname', type=str, help='hostname'
-    )
-    args = parser.parse_args()
-
-    error_args = list()
-    if not args.token:
-        error_args.append('token')
-
-    if not args.profile:
-        error_args.append('profile')
-
-    if not args.hostname:
-        error_args.append('hostname')
-
-    if error_args:
-        error_msg = ' and '.join(
-            [', '.join(error_args[:-1]), error_args[-1]]
-            if len(error_args) > 2 else error_args
-        ).capitalize() + ' not given!'
-        logger.error(error_msg)
-        parser.error(error_msg)
-        sys.exit(2)
-
-    subprocess.call(['yum', 'clean', 'all'])
-
     try:
+        subprocess.call(['yum', 'clean', 'all'])
+
+        config = Config()
+        token = config.get_token()
+        hostname = config.get_hostname()
+        profiles = config.get_profiles()
+
         logger.info(
-            'Sending request for profile(s): ' + ', '.join(args.profile)
+            'Sending request for profile(s): ' + ', '.join(profiles)
         )
         data = get_repo_data(
-            build_api_url(args.hostname),
-            args.token,
-            args.profile
+            build_api_url(hostname),
+            token,
+            profiles
         )
 
         if not data:
             logger.warning(
                 'No data for given metric profile(s): ' +
-                ', '.join(args.profile)
+                ', '.join(profiles)
             )
             sys.exit(2)
 
@@ -146,6 +117,18 @@ def main():
         sys.exit(2)
 
     except requests.exceptions.RequestException as err:
+        logger.error(err)
+        sys.exit(2)
+
+    except ConfigParser.ParsingError as err:
+        logger.error(err)
+        sys.exit(2)
+
+    except ConfigParser.NoSectionError as err:
+        logger.error(err)
+        sys.exit(2)
+
+    except ConfigParser.NoOptionError as err:
         logger.error(err)
         sys.exit(2)
 
