@@ -1,6 +1,7 @@
 include modules/*
 include tests/*
 include exec/*
+include config/*
 include argo-poem-tools.spec
 
 recursive-exclude test *.pyc *.pyo
