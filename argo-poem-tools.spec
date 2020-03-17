@@ -50,6 +50,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files -f INSTALLED_FILES
 %defattr(-,root,root)
+%config(noreplace) %{_sysconfdir}/%{name}/argo-poem-tools.conf
 %if 0%{?el6}
 %dir %{python_sitelib}/%{underscore %{name}}/
 %{python_sitelib}/%{underscore %{name}}/*.py[co]
