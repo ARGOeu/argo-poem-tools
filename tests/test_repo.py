@@ -72,6 +72,9 @@ class MockResponse:
         elif status_code == 400:
             self.reason = 'Bad Request'
 
+        elif status_code == 500:
+            self.reason = 'Server Error'
+
     def json(self):
         return self.data
 
@@ -81,7 +84,10 @@ def mock_request(*args, **kwargs):
 
 
 def mock_request_wrong_url(*args, **kwargs):
-    return MockResponse(None, 404)
+    return MockResponse(
+        '<h1>Not Found</h1>\n'
+        '<p>The requested resource was not found on this server.</p>', 404
+    )
 
 
 def mock_request_wrong_token(*args, **kwargs):
@@ -93,6 +99,16 @@ def mock_request_wrong_token(*args, **kwargs):
 def mock_request_wrong_profiles(*args, **kwargs):
     return MockResponse(
         {"detail": "You must define profile!"}, 400
+    )
+
+
+def mock_request_server_error(*args, **kwargs):
+    return MockResponse('<h1>Server Error (500)</h1>', 500)
+
+
+def mock_request_json_without_details_key(*args, **kwargs):
+    return MockResponse(
+        {'error': 'Your error message is not correct'}, 400
     )
 
 
@@ -242,6 +258,27 @@ class RepoTests(unittest.TestCase):
             url='url',
             token='token',
             profiles=''
+        )
+
+    @mock.patch('requests.get', side_effect=mock_request_server_error)
+    def test_get_repo_data_if_server_error(self, func):
+        self.assertRaises(
+            requests.exceptions.RequestException,
+            get_repo_data,
+            url='url',
+            token='token',
+            profiles='profiles'
+        )
+
+    @mock.patch('requests.get')
+    def test_get_repo_data_if_json_without_details(self, mock_request):
+        mock_request.side_effect = mock_request_json_without_details_key
+        self.assertRaises(
+            requests.exceptions.RequestException,
+            get_repo_data,
+            url='url',
+            token='token',
+            profiles='profiles'
         )
 
 
