@@ -270,6 +270,17 @@ class RepoTests(unittest.TestCase):
             profiles='profiles'
         )
 
+    @mock.patch('requests.get')
+    def test_get_repo_data_if_json_without_details(self, mock_request):
+        mock_request.side_effect = mock_request_json_without_details_key
+        self.assertRaises(
+            requests.exceptions.RequestException,
+            get_repo_data,
+            url='url',
+            token='token',
+            profiles='profiles'
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

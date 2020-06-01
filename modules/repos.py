@@ -19,7 +19,7 @@ def get_repo_data(url, token, profiles):
         try:
             msg = response.json()['detail']
 
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, KeyError):
             msg = '%s %s' % (response.status_code, response.reason)
 
         raise requests.exceptions.RequestException(msg)
