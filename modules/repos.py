@@ -16,9 +16,10 @@ def get_repo_data(url, token, profiles):
             return response.json()
 
     else:
-        if response.json() and 'detail' in response.json():
+        try:
             msg = response.json()['detail']
-        else:
+
+        except (ValueError, TypeError):
             msg = '%s %s' % (response.status_code, response.reason)
 
         raise requests.exceptions.RequestException(msg)
