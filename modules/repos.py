@@ -1,67 +1,73 @@
-#!/usr/bin/python
 import os
-import requests
 import subprocess
 import sys
 
-
-def get_repo_data(url, token, profiles):
-    headers = {
-        'x-api-key': token, 'profiles': refine_list_of_profiles(profiles)
-    }
-    response = requests.get(url, headers=headers, timeout=180)
-
-    if response.status_code == 200:
-        if response.json():
-            return response.json()
-
-    else:
-        try:
-            msg = response.json()['detail']
-
-        except (ValueError, TypeError, KeyError):
-            msg = '%s %s' % (response.status_code, response.reason)
-
-        raise requests.exceptions.RequestException(msg)
+import requests
 
 
-def create_yum_repo_file(data, path='/etc/yum.repos.d'):
-    for key, value in data[0].items():
-        title = key
-        content = value['content']
+class YUMRepos:
+    def __init__(self, hostname, token, profiles):
+        self.hostname = hostname
+        self.token = token
+        self.profiles = profiles
 
-        with open(os.path.join(path, title + '.repo'), 'w') as f:
-            f.write(content)
+    def get_data(self):
+        headers = {
+            'x-api-key': self.token,
+            'profiles': self._refine_list_of_profiles()
+        }
+        response = requests.get(self._build_url(), headers=headers, timeout=180)
 
+        if response.status_code == 200:
+            data = response.json()
+            return data
 
-def get_centos_version():
-    if sys.version_info[1] >= 7:
-        string = subprocess.check_output(['rpm', '-q', 'centos-release'])
+        else:
+            try:
+                msg = response.json()['detail']
 
-    else:
-        string = subprocess.Popen(
-            ['rpm', '-q', 'centos-release'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        ).communicate()[0]
+            except (ValueError, TypeError, KeyError):
+                msg = '%s %s' % (response.status_code, response.reason)
 
-    return 'centos' + string.split('-')[2]
+            raise requests.exceptions.RequestException(msg)
 
+    def create_file(self, path='/etc/yum.repos.d'):
+        data = self.get_data()
 
-def build_api_url(hostname):
-    if hostname.startswith('https://'):
-        hostname = hostname[8:]
+        for key, value in data[0].items():
+            title = key
+            content = value['content']
 
-    if hostname.startswith('http://'):
-        hostname = hostname[7:]
+            with open(os.path.join(path, title + '.repo'), 'w') as f:
+                f.write(content)
 
-    if hostname.endswith('/'):
-        hostname = hostname[0:-1]
+    @classmethod
+    def _get_centos_version(cls):
+        if sys.version_info[1] >= 7:
+            string = subprocess.check_output(['rpm', '-q', 'centos-release'])
 
-    return 'https://' + hostname + '/api/v2/repos/' + get_centos_version()
+        else:
+            string = subprocess.Popen(
+                ['rpm', '-q', 'centos-release'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            ).communicate()[0]
 
+        return 'centos' + string.split('-')[2]
 
-def refine_list_of_profiles(profiles):
-    profiles = '[' + ', '.join(profiles) + ']'
+    def _build_url(self):
+        hostname = self.hostname
+        if hostname.startswith('https://'):
+            hostname = hostname[8:]
 
-    return profiles
+        if hostname.startswith('http://'):
+            hostname = hostname[7:]
+
+        if hostname.endswith('/'):
+            hostname = hostname[0:-1]
+
+        return 'https://' + hostname + '/api/v2/repos/' + \
+               self._get_centos_version()
+
+    def _refine_list_of_profiles(self):
+        return '[' + ', '.join(self.profiles) + ']'
