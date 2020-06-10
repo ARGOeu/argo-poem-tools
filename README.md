@@ -21,3 +21,5 @@ Example output:
 2020-03-17 08:07:31,091 - argo-poem-packages - INFO - Packages installed: nagios-plugins-lfc-0.9.6, nagios-plugins-argo-0.1.11, nagios-plugins-cert-1.0.0; Packages installed with different version: nagios-plugins-http-2.2.2 -> nagios-plugins-http-2.3.1
 2020-03-17 08:07:31,091 - argo-poem-packages - INFO - ok!
 ```
+
+There is also option of a *dry-run*. In that case, the tool is run by invoking `argo-poem-packages.py --noop`. Tool returns list of packages that would be installed, upgraded, or downgraded, without actually doing it. The output is sent both to stdout and syslog. 
