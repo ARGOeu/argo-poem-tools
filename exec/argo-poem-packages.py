@@ -23,7 +23,9 @@ def main():
     logger = logging.getLogger('argo-poem-packages')
     logger.setLevel(logging.INFO)
 
-    stdout = logging.StreamHandler()
+    if noop:
+        stdout = logging.StreamHandler()
+        logger.addHandler(stdout)
 
     # setting up logging to file
     logfile = logging.FileHandler('/var/log/messages')
@@ -34,7 +36,6 @@ def main():
 
     # add the handler to the root logger
     logger.addHandler(logfile)
-    logger.addHandler(stdout)
 
     try:
         subprocess.call(['yum', 'clean', 'all'])
@@ -58,8 +59,7 @@ def main():
             sys.exit(2)
 
         else:
-            if not noop:
-                logger.info('Creating YUM repo files...')
+            logger.info('Creating YUM repo files...')
 
             files = repos.create_file()
 
