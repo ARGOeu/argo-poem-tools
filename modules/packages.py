@@ -97,10 +97,10 @@ class Packages:
                             downgrade.append(change_tuple)
 
                         else:
-                            upgrade.append('-'.join(item))
+                            upgrade.append(('-'.join(item),))
 
                     else:
-                        upgrade.append((item[0],))
+                        upgrade.append(item)
 
             else:
                 if item not in self.packages_not_found and \
@@ -212,6 +212,55 @@ class Packages:
         if not_installed_diff_ver:
             warn_msg.append(
                 'Packages not installed: ' + '; '.join(not_installed_diff_ver)
+            )
+
+        if not_found:
+            warn_msg.append(
+                'Packages not found: ' + '; '.join(not_found)
+            )
+
+        return info_msg, warn_msg
+
+    def no_op(self):
+        install, upgrade0, downgrade0, diff_ver0, not_found = self._get()
+        info_msg = []
+        warn_msg = []
+
+        if install:
+            info_msg.append(
+                'Packages to be installed: ' + '; '.join(install)
+            )
+
+        if upgrade0:
+            upgrade = []
+            for item in upgrade0:
+                if len(item) > 1:
+                    upgrade.append(' -> '.join(item))
+                else:
+                    upgrade.append(item[0])
+
+            info_msg.append(
+                'Packages to be upgraded: ' + '; '.join(upgrade)
+            )
+
+        if downgrade0:
+            downgrade = []
+            for item in downgrade0:
+                downgrade.append(' -> '.join(item))
+
+            info_msg.append(
+                'Packages to be downgraded: ' + '; '.join(downgrade)
+            )
+
+        if diff_ver0:
+            diff_ver = []
+            for item in diff_ver0:
+                diff_ver.append(' -> '.join(item))
+
+            info_msg.append(
+                'Packages to be installed with different version: ' + '; '.join(
+                    diff_ver
+                )
             )
 
         if not_found:
