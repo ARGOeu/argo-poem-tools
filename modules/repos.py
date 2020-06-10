@@ -10,6 +10,7 @@ class YUMRepos:
         self.hostname = hostname
         self.token = token
         self.profiles = profiles
+        self.data = None
 
     def get_data(self):
         headers = {
@@ -20,6 +21,7 @@ class YUMRepos:
 
         if response.status_code == 200:
             data = response.json()
+            self.data = data
             return data
 
         else:
@@ -32,14 +34,19 @@ class YUMRepos:
             raise requests.exceptions.RequestException(msg)
 
     def create_file(self, path='/etc/yum.repos.d'):
-        data = self.get_data()
+        if not self.data:
+            self.get_data()
 
-        for key, value in data[0].items():
+        files = []
+        for key, value in self.data[0].items():
             title = key
             content = value['content']
 
+            files.append(os.path.join(path, title + '.repo'))
             with open(os.path.join(path, title + '.repo'), 'w') as f:
                 f.write(content)
+
+        return sorted(files)
 
     @classmethod
     def _get_centos_version(cls):

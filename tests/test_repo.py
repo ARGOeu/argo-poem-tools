@@ -241,12 +241,17 @@ class YUMReposTests(unittest.TestCase):
         def test_create_file(self, mock_request, mock_sp):
             mock_request.side_effect = mock_request_ok
             mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
-            self.repos1.create_file(path=os.getcwd())
+            files = self.repos1.create_file(path=os.getcwd())
             mock_request.assert_called_once_with(
                 'https://mock.url.com/api/v2/repos/centos7',
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
             )
             self.assertTrue(os.path.exists('argo-devel.repo'))
             self.assertTrue(os.path.exists('nordugrid-updates.repo'))
@@ -272,12 +277,17 @@ class YUMReposTests(unittest.TestCase):
             with open('argo-devel.repo', 'w') as f:
                 f.write('test')
 
-            self.repos1.create_file(os.getcwd())
+            files = self.repos1.create_file(os.getcwd())
             mock_request.assert_called_once_with(
                 'https://mock.url.com/api/v2/repos/centos7',
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
             )
             self.assertTrue(os.path.exists('argo-devel.repo'))
             self.assertTrue(os.path.exists('nordugrid-updates.repo'))
@@ -465,12 +475,17 @@ class YUMReposTests(unittest.TestCase):
             process_mock.configure_mock(**attrs)
             mock_sp.return_value = process_mock
             mock_request.side_effect = mock_request_ok
-            self.repos1.create_file(path=os.getcwd())
+            files = self.repos1.create_file(path=os.getcwd())
             mock_request.assert_called_once_with(
                 'https://mock.url.com/api/v2/repos/centos6',
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
             )
             self.assertTrue(os.path.exists('argo-devel.repo'))
             self.assertTrue(os.path.exists('nordugrid-updates.repo'))
@@ -504,12 +519,17 @@ class YUMReposTests(unittest.TestCase):
             with open('argo-devel.repo', 'w') as f:
                 f.write('test')
 
-            self.repos1.create_file(os.getcwd())
+            files = self.repos1.create_file(os.getcwd())
             mock_request.assert_called_once_with(
                 'https://mock.url.com/api/v2/repos/centos6',
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
             )
             self.assertTrue(os.path.exists('argo-devel.repo'))
             self.assertTrue(os.path.exists('nordugrid-updates.repo'))
