@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import ConfigParser
+import argparse
 import logging
 import subprocess
 import sys
@@ -11,6 +12,14 @@ from argo_poem_tools.repos import YUMRepos
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--noop', action='store_true', dest='noop',
+        help='run script without installing'
+    )
+    args = parser.parse_args()
+    noop = args.noop
+
     logger = logging.getLogger('argo-poem-packages')
     logger.setLevel(logging.INFO)
 
@@ -49,12 +58,20 @@ def main():
             sys.exit(2)
 
         else:
-            logger.info('Creating YUM repo files...')
-            repos.create_file()
+            if not noop:
+                logger.info('Creating YUM repo files...')
+
+            files = repos.create_file()
+
+            logger.info('Created files: ' + '; '.join(files))
 
             pkg = Packages(data)
 
-            info_msg, warn_msg = pkg.install()
+            if noop:
+                info_msg, warn_msg = pkg.no_op()
+
+            else:
+                info_msg, warn_msg = pkg.install()
 
             if info_msg:
                 for msg in info_msg:
@@ -67,7 +84,8 @@ def main():
                 sys.exit(1)
 
             else:
-                logger.info('ok!')
+                if not noop:
+                    logger.info('ok!')
                 sys.exit(0)
 
     except requests.exceptions.ConnectionError as err:
