@@ -1,10 +1,8 @@
 #!/usr/bin/python
-import mock
-
-from argo_poem_tools.packages import Packages
-
 import unittest
 
+import mock
+from argo_poem_tools.packages import Packages
 
 data = [
     {
@@ -55,13 +53,17 @@ data = [
 ]
 
 
+def mock_func(*args, **kwargs):
+    pass
+
+
 class PackageTests(unittest.TestCase):
     def setUp(self):
         self.pkgs = Packages(data)
 
     def test_get_package_list(self):
         self.assertEqual(
-            self.pkgs.list_of_packages(),
+            self.pkgs.package_list,
             [
                 ('nordugrid-arc-nagios-plugins',),
                 ('nagios-plugins-fedcloud', '0.5.0'),
@@ -70,9 +72,10 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('yum.YumBase.pkgSack')
-    @mock.patch('yum.YumBase.rpmdb')
-    def test_get_packages(self, mock_yumbase1, mock_yumbase2):
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_install_packages(self, mock_rpmdb, mock_yumdb, mock_sp):
         mock1 = mock.Mock(version='0.5.0')
         mock2 = mock.Mock(version='0.4.0')
         mock3 = mock.Mock(version='1.5.0')
@@ -85,33 +88,45 @@ class PackageTests(unittest.TestCase):
         mock4.name = 'nagios-plugins-igtf'
         mock5.name = 'nagios-plugins-globus'
         mock6.name = 'nordugrid-arc-nagios-plugins'
-        mock_yumbase1.returnPackages.return_value = [mock2, mock3]
-        mock_yumbase2.returnPackages.return_value = [
+        mock_rpmdb.returnPackages.return_value = [mock2, mock3, mock5]
+        mock_yumdb.returnPackages.return_value = [
             mock1, mock2, mock3, mock4, mock5, mock6
         ]
-
-        install, downgrade = self.pkgs.get_packages()
-
+        mock_sp.side_effect = mock_func
+        info, warn = self.pkgs.install()
+        self.assertEqual(mock_sp.call_count, 4)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
+            ),
+            mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-globus-0.1.5']),
+            mock.call(['yum', '-y', 'install', 'nordugrid-arc-nagios-plugins'])
+        ], any_order=True)
         self.assertEqual(
-            install,
+            info,
             [
-                'nordugrid-arc-nagios-plugins',
-                'nagios-plugins-fedcloud-0.5.0',
-                'nagios-plugins-globus-0.1.5'
-             ]
+                'Packages installed: nordugrid-arc-nagios-plugins',
+                'Packages upgraded: '
+                'nagios-plugins-fedcloud-0.4.0 -> '
+                'nagios-plugins-fedcloud-0.5.0; nagios-plugins-globus-0.1.5',
+                'Packages downgraded: '
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0'
+            ]
         )
-        self.assertEqual(downgrade, ['nagios-plugins-igtf-1.4.0'])
+        self.assertEqual(warn, [])
 
-    @mock.patch('yum.YumBase.pkgSack')
-    @mock.patch('yum.YumBase.rpmdb')
-    def test_get_packages_if_installed_and_wrong_version_available(
-            self, mock_yumbase1, mock_yumbase2
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_install_packages_if_installed_and_wrong_version_available(
+            self, mock_rpmdb, mock_yumdb, mock_sp
     ):
         mock1 = mock.Mock(version='0.5.0')
         mock2 = mock.Mock(version='0.4.0')
         mock3 = mock.Mock(version='1.5.0')
         mock4 = mock.Mock(version='1.4.0')
-        mock5 = mock.Mock(version='0.1.5')
+        mock5 = mock.Mock(version='0.1.6')
         mock6 = mock.Mock(version='2.0.1')
         mock7 = mock.Mock(version='1.9.0')
         mock1.name = 'nagios-plugins-fedcloud'
@@ -121,119 +136,243 @@ class PackageTests(unittest.TestCase):
         mock5.name = 'nagios-plugins-globus'
         mock6.name = 'nordugrid-arc-nagios-plugins'
         mock7.name = 'nordugrid-arc-nagios-plugins'
-        mock_yumbase1.returnPackages.return_value = [mock2, mock3, mock7]
-        mock_yumbase2.returnPackages.return_value = [
+        mock_rpmdb.returnPackages.return_value = [mock2, mock3, mock7]
+        mock_yumdb.returnPackages.return_value = [
             mock1, mock2, mock3, mock4, mock5, mock6
         ]
-
-        install, downgrade = self.pkgs.get_packages()
-
+        mock_sp.side_effect = mock_func
+        info, warn = self.pkgs.install()
+        self.assertEqual(mock_sp.call_count, 4)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
+            ),
+            mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-globus-0.1.6']),
+            mock.call(['yum', '-y', 'install', 'nordugrid-arc-nagios-plugins'])
+        ], any_order=True)
         self.assertEqual(
-            install,
-            ['nagios-plugins-fedcloud-0.5.0',
-             'nagios-plugins-globus-0.1.5']
-        )
-        self.assertEqual(downgrade, ['nagios-plugins-igtf-1.4.0'])
-
-    @mock.patch('yum.YumBase.pkgSack')
-    def test_exact_packages_not_found(self, mock_yumbase):
-        mock1 = mock.Mock(version='2.0.0')
-        mock2 = mock.Mock(version='0.6.0')
-        mock3 = mock.Mock(version='1.4.0')
-        mock1.name = 'nordugrid-arc-nagios-plugins'
-        mock2.name = 'nagios-plugins-fedcloud'
-        mock3.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2, mock3]
-
-        self.assertEqual(
-            self.pkgs.exact_packages_not_found(),
+            info,
             [
-                ('nagios-plugins-fedcloud', '0.5.0'),
-                ('nagios-plugins-globus', '0.1.5')
+                'Packages upgraded: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-fedcloud-0.4.0 -> nagios-plugins-fedcloud-'
+                '0.5.0',
+                'Packages downgraded: '
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
+                'Packages installed with different version: '
+                'nagios-plugins-globus-0.1.5 -> nagios-plugins-globus-0.1.6'
             ]
         )
+        self.assertEqual(warn, [])
 
-    @mock.patch('yum.YumBase.pkgSack')
-    def test_packages_not_found(self, mock_yumbase):
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_install_if_exact_packages_not_found(
+            self, mock_rpmdb, mock_yumdb, mock_sp
+    ):
         mock1 = mock.Mock(version='2.0.0')
         mock2 = mock.Mock(version='0.6.0')
         mock3 = mock.Mock(version='1.4.0')
+        mock4 = mock.Mock(version='0.8.0')
+        mock5 = mock.Mock(version='0.1.5')
+        mock6 = mock.Mock(version='0.7.0')
         mock1.name = 'nordugrid-arc-nagios-plugins'
         mock2.name = 'nagios-plugins-fedcloud'
         mock3.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2, mock3]
-
+        mock4.name = 'nagios-plugins-fedcloud'
+        mock5.name = 'nagios-plugins-globus'
+        mock6.name = 'nagios-plugins-fedcloud'
+        mock_rpmdb.returnPackages.return_value = []
+        mock_yumdb.returnPackages.return_value = [
+            mock1, mock2, mock3, mock4, mock5, mock6
+        ]
+        mock_sp.side_effect = mock_func
+        info, warn = self.pkgs.install()
+        self.assertEqual(mock_sp.call_count, 4)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.8.0']
+            ),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0']),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-globus-0.1.5']),
+            mock.call(['yum', '-y', 'install', 'nordugrid-arc-nagios-plugins'])
+        ], any_order=True)
         self.assertEqual(
-            self.pkgs.packages_not_found(),
-            [('nagios-plugins-globus', '0.1.5')]
+            info,
+            [
+                'Packages installed: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-igtf-1.4.0; '
+                'nagios-plugins-globus-0.1.5',
+                'Packages installed with different version: '
+                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.8.0'
+            ]
         )
+        self.assertEqual(warn, [])
 
-    @mock.patch('yum.YumBase.pkgSack')
-    def test_get_packages_not_found(self, mock_yumbase):
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_install_if_packages_not_found(
+            self, mock_rpmdb, mock_yumbd, mock_sp
+    ):
         mock1 = mock.Mock(version='0.6.0')
         mock2 = mock.Mock(version='1.4.0')
         mock1.name = 'nagios-plugins-fedcloud'
         mock2.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2]
-
-        self.assertEqual(
-            self.pkgs.get_packages_not_found(),
-            ['nordugrid-arc-nagios-plugins', 'nagios-plugins-globus-0.1.5']
-        )
-
-    @mock.patch('yum.YumBase.pkgSack')
-    def test_packages_found_with_different_version(self, mock_yumbase):
-        mock1 = mock.Mock(version='2.0.0')
-        mock2 = mock.Mock(version='0.5.0')
-        mock3 = mock.Mock(version='1.5.0')
-        mock1.name = 'nordugrid-arc-nagios-plugins'
-        mock2.name = 'nagios-plugins-fedcloud'
-        mock3.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2, mock3]
-
-        self.assertEqual(
-            self.pkgs.packages_found_with_different_version(),
-            [('nagios-plugins-igtf', '1.5.0')]
-        )
-
-    @mock.patch('yum.YumBase.pkgSack')
-    def test_get_packages_installed_with_different_version(self, mock_yumbase):
-        mock1 = mock.Mock(version='2.0.0')
-        mock2 = mock.Mock(version='0.5.0')
-        mock3 = mock.Mock(version='1.5.0')
-        mock1.name = 'nordugrid-arc-nagios-plugins'
-        mock2.name = 'nagios-plugins-fedcloud'
-        mock3.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2, mock3]
-
-        self.assertEqual(
-            self.pkgs.get_packages_installed_with_different_version(),
-            ['nagios-plugins-igtf-1.4.0 -> nagios-plugins-igtf-1.5.0']
-        )
-
-    @mock.patch('yum.YumBase.pkgSack')
-    def test_get_packages_installed_with_version_as_requested(
-            self, mock_yumbase
-    ):
-        mock1 = mock.Mock(version='2.0.0')
-        mock2 = mock.Mock(version='0.5.0')
-        mock3 = mock.Mock(version='1.5.0')
-        mock1.name = 'nordugrid-arc-nagios-plugins'
-        mock2.name = 'nagios-plugins-fedcloud'
-        mock3.name = 'nagios-plugins-igtf'
-        mock_yumbase.returnPackages.return_value = [mock1, mock2, mock3]
-
-        self.assertEqual(
-            self.pkgs.get_packages_installed_with_versions_as_requested(
-                [
-                    'nordugrid-arc-nagios-plugins',
-                    'nagios-plugins-fedcloud-0.5.0',
-                    'nagios-plugins-igtf'
-                ]
+        mock_rpmdb.returnPackages.return_value = []
+        mock_yumbd.returnPackages.return_value = [mock1, mock2]
+        mock_sp.side_effect = mock_func
+        info, warn = self.pkgs.install()
+        self.assertEqual(mock_sp.call_count, 2)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.6.0']
             ),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0'])
+        ], any_order=True)
+        self.assertEqual(
+            info,
             [
-                'nordugrid-arc-nagios-plugins',
-                'nagios-plugins-fedcloud-0.5.0'
+                'Packages installed: nagios-plugins-igtf-1.4.0',
+                'Packages installed with different version: '
+                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.6.0'
+            ]
+        )
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-globus-0.1.5'
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_no_op_run(self, mock_rpmdb, mock_yumdb):
+        mock1 = mock.Mock(version='0.5.0')
+        mock2 = mock.Mock(version='0.4.0')
+        mock3 = mock.Mock(version='1.5.0')
+        mock4 = mock.Mock(version='1.4.0')
+        mock5 = mock.Mock(version='0.1.5')
+        mock6 = mock.Mock(version='2.0.0')
+        mock1.name = 'nagios-plugins-fedcloud'
+        mock2.name = 'nagios-plugins-fedcloud'
+        mock3.name = 'nagios-plugins-igtf'
+        mock4.name = 'nagios-plugins-igtf'
+        mock5.name = 'nagios-plugins-globus'
+        mock6.name = 'nordugrid-arc-nagios-plugins'
+        mock_rpmdb.returnPackages.return_value = [mock2, mock3]
+        mock_yumdb.returnPackages.return_value = [
+            mock1, mock2, mock3, mock4, mock5, mock6
+        ]
+        info, warn = self.pkgs.no_op()
+        self.assertEqual(
+            info,
+            [
+                'Packages to be installed: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-globus-0.1.5',
+                'Packages to be upgraded: nagios-plugins-fedcloud-0.4.0 -> '
+                'nagios-plugins-fedcloud-0.5.0',
+                'Packages to be downgraded: '
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0'
+            ]
+        )
+        self.assertEqual(warn, [])
+
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_no_op_if_installed_and_wrong_version_available(
+            self, mock_rpmdb, mock_yumdb
+    ):
+        mock1 = mock.Mock(version='0.5.0')
+        mock2 = mock.Mock(version='0.4.0')
+        mock3 = mock.Mock(version='1.5.0')
+        mock4 = mock.Mock(version='1.4.0')
+        mock5 = mock.Mock(version='0.1.6')
+        mock6 = mock.Mock(version='2.0.1')
+        mock7 = mock.Mock(version='1.9.0')
+        mock1.name = 'nagios-plugins-fedcloud'
+        mock2.name = 'nagios-plugins-fedcloud'
+        mock3.name = 'nagios-plugins-igtf'
+        mock4.name = 'nagios-plugins-igtf'
+        mock5.name = 'nagios-plugins-globus'
+        mock6.name = 'nordugrid-arc-nagios-plugins'
+        mock7.name = 'nordugrid-arc-nagios-plugins'
+        mock_rpmdb.returnPackages.return_value = [mock2, mock3, mock7]
+        mock_yumdb.returnPackages.return_value = [
+            mock1, mock2, mock3, mock4, mock5, mock6
+        ]
+        info, warn = self.pkgs.no_op()
+        self.assertEqual(
+            info,
+            [
+                'Packages to be upgraded: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-fedcloud-0.4.0 -> nagios-plugins-fedcloud-'
+                '0.5.0',
+                'Packages to be downgraded: '
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
+                'Packages to be installed with different version: '
+                'nagios-plugins-globus-0.1.5 -> nagios-plugins-globus-0.1.6'
+            ]
+        )
+        self.assertEqual(warn, [])
+
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_no_op_exact_packages_not_found(self, mock_rpmdb, mock_yumdb):
+        mock1 = mock.Mock(version='2.0.0')
+        mock2 = mock.Mock(version='0.6.0')
+        mock3 = mock.Mock(version='1.4.0')
+        mock4 = mock.Mock(version='0.8.0')
+        mock5 = mock.Mock(version='0.1.5')
+        mock6 = mock.Mock(version='0.7.0')
+        mock1.name = 'nordugrid-arc-nagios-plugins'
+        mock2.name = 'nagios-plugins-fedcloud'
+        mock3.name = 'nagios-plugins-igtf'
+        mock4.name = 'nagios-plugins-fedcloud'
+        mock5.name = 'nagios-plugins-globus'
+        mock6.name = 'nagios-plugins-fedcloud'
+        mock_rpmdb.returnPackages.return_value = []
+        mock_yumdb.returnPackages.return_value = [
+            mock1, mock2, mock3, mock4, mock5, mock6
+        ]
+        info, warn = self.pkgs.no_op()
+        self.assertEqual(
+            info,
+            [
+                'Packages to be installed: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-igtf-1.4.0; '
+                'nagios-plugins-globus-0.1.5',
+                'Packages to be installed with different version: '
+                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.8.0'
+            ]
+        )
+        self.assertEqual(warn, [])
+
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
+    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
+    def test_no_op_if_packages_not_found(self, mock_rpmdb, mock_yumbd):
+        mock1 = mock.Mock(version='0.6.0')
+        mock2 = mock.Mock(version='1.4.0')
+        mock1.name = 'nagios-plugins-fedcloud'
+        mock2.name = 'nagios-plugins-igtf'
+        mock_rpmdb.returnPackages.return_value = []
+        mock_yumbd.returnPackages.return_value = [mock1, mock2]
+        info, warn = self.pkgs.no_op()
+        self.assertEqual(
+            info,
+            [
+                'Packages to be installed: nagios-plugins-igtf-1.4.0',
+                'Packages to be installed with different version: '
+                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.6.0'
+            ]
+        )
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found: nordugrid-arc-nagios-plugins; '
+                'nagios-plugins-globus-0.1.5'
             ]
         )
 

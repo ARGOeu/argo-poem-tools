@@ -1,16 +1,13 @@
 #!/usr/bin/python
-import mock
-
-from argo_poem_tools.repos import create_yum_repo_file, get_centos_version, \
-    build_api_url, refine_list_of_profiles, get_repo_data
-
 import os
-import requests
 import sys
 import unittest
 
+import mock
+import requests
+from argo_poem_tools.repos import YUMRepos
 
-data = [
+mock_data = [
     {
         "argo-devel": {
             "content": "[argo-devel]\n"
@@ -79,8 +76,8 @@ class MockResponse:
         return self.data
 
 
-def mock_request(*args, **kwargs):
-    return MockResponse(data, 200)
+def mock_request_ok(*args, **kwargs):
+    return MockResponse(mock_data, 200)
 
 
 def mock_request_wrong_url(*args, **kwargs):
@@ -112,7 +109,29 @@ def mock_request_json_without_details_key(*args, **kwargs):
     )
 
 
-class RepoTests(unittest.TestCase):
+class YUMReposTests(unittest.TestCase):
+    def setUp(self):
+        self.repos1 = YUMRepos(
+            hostname='mock.url.com',
+            token='some-token-1234',
+            profiles=['TEST_PROFILE1', 'TEST_PROFILE2']
+        )
+        self.repos2 = YUMRepos(
+            hostname='http://mock.url.com/',
+            token='some-token-1234',
+            profiles=['TEST_PROFILE1']
+        )
+        self.repos3 = YUMRepos(
+            hostname='https://mock.url.com/',
+            token='some-token-1234',
+            profiles=['TEST_PROFILE1', 'TEST_PROFILE2']
+        )
+        self.repos4 = YUMRepos(
+            hostname='mock.url.com',
+            token='some-token-1234',
+            profiles=''
+        )
+
     def tearDown(self):
         if os.path.exists('argo-devel.repo'):
             os.remove('argo-devel.repo')
@@ -120,46 +139,174 @@ class RepoTests(unittest.TestCase):
         if os.path.exists('nordugrid-updates.repo'):
             os.remove('nordugrid-updates.repo')
 
-    def test_create_yum_repo_file(self):
-        create_yum_repo_file(data, os.getcwd())
-        self.assertTrue(os.path.exists('argo-devel.repo'))
-        self.assertTrue(os.path.exists('nordugrid-updates.repo'))
-
-        with open('argo-devel.repo', 'r') as f:
-            content1 = f.read()
-
-        with open('nordugrid-updates.repo', 'r') as f:
-            content2 = f.read()
-
-        self.assertEqual(content1, data[0]['argo-devel']['content'])
-        self.assertEqual(content2, data[0]['nordugrid-updates']['content'])
-
-    def test_do_override_file_which_already_exists(self):
-        with open('argo-devel.repo', 'w') as f:
-            f.write('test')
-
-        create_yum_repo_file(data, os.getcwd())
-        self.assertTrue(os.path.exists('argo-devel.repo'))
-        self.assertTrue(os.path.exists('nordugrid-updates.repo'))
-
-        with open('argo-devel.repo', 'r') as f:
-            content1 = f.read()
-
-        with open('nordugrid-updates.repo', 'r') as f:
-            content2 = f.read()
-
-        self.assertEqual(content1, data[0]['argo-devel']['content'])
-        self.assertEqual(content2, data[0]['nordugrid-updates']['content'])
-
     if sys.version_info[1] >= 7:
-        @mock.patch('subprocess.check_output')
-        def test_centos_version_7(self, func):
-            func.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
-            self.assertEqual(get_centos_version(), 'centos7')
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_ok
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            data = self.repos1.get_data()
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos7',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(data, mock_data)
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_hostname_http(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_ok
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            data = self.repos2.get_data()
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos7',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1]'},
+                timeout=180
+            )
+            self.assertEqual(data, mock_data)
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_hostname_https(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_ok
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            data = self.repos1.get_data()
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos7',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(data, mock_data)
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_server_error(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_server_error
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            with self.assertRaises(requests.exceptions.RequestException) as err:
+                self.repos1.get_data()
+                self.assertEqual(err, '500 Server Error')
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_wrong_url(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_wrong_url
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            with self.assertRaises(requests.exceptions.RequestException) as err:
+                self.repos1.get_data()
+                self.assertEqual(err, '404 Not Found')
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_wrong_token(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_wrong_token
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            with self.assertRaises(requests.exceptions.RequestException) as err:
+                self.repos1.get_data()
+                self.assertEqual(
+                    err, '403 Forbidden: Authentication credentials were not '
+                         'provided.'
+                )
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_no_profiles(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_wrong_profiles
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            with self.assertRaises(requests.exceptions.RequestException) as err:
+                self.repos1.get_data()
+                self.assertEqual(
+                    err, '400 Bad Request: You must define profile!'
+                )
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_json_without_details(
+                self, mock_request, mock_sp
+        ):
+            mock_request.side_effect = mock_request_json_without_details_key
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            with self.assertRaises(requests.exceptions.RequestException) as err:
+                self.repos1.get_data()
+                self.assertEqual(
+                    err, '400 Bad Request'
+                )
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_create_file(self, mock_request, mock_sp):
+            mock_request.side_effect = mock_request_ok
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            files = self.repos1.create_file(path=os.getcwd())
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos7',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
+            )
+            self.assertTrue(os.path.exists('argo-devel.repo'))
+            self.assertTrue(os.path.exists('nordugrid-updates.repo'))
+
+            with open('argo-devel.repo', 'r') as f:
+                content1 = f.read()
+
+            with open('nordugrid-updates.repo', 'r') as f:
+                content2 = f.read()
+
+            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
+            self.assertEqual(
+                content2, mock_data[0]['nordugrid-updates']['content']
+            )
+
+        @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_do_override_file_which_already_exists(
+                self, mock_request, mock_sp
+        ):
+            mock_request.side_effect = mock_request_ok
+            mock_sp.return_value = 'centos-release-7-7.1908.0.el7.centos.x86_64'
+            with open('argo-devel.repo', 'w') as f:
+                f.write('test')
+
+            files = self.repos1.create_file(os.getcwd())
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos7',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
+            )
+            self.assertTrue(os.path.exists('argo-devel.repo'))
+            self.assertTrue(os.path.exists('nordugrid-updates.repo'))
+
+            with open('argo-devel.repo', 'r') as f:
+                content1 = f.read()
+
+            with open('nordugrid-updates.repo', 'r') as f:
+                content2 = f.read()
+
+            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
+            self.assertEqual(
+                content2, mock_data[0]['nordugrid-updates']['content']
+            )
 
     else:
-        @mock.patch('subprocess.Popen')
-        def test_centos_version_6(self, func):
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data(self, mock_request, mock_sp):
             process_mock = mock.Mock()
             attrs = {
                 'communicate.return_value': (
@@ -168,118 +315,235 @@ class RepoTests(unittest.TestCase):
                 )
             }
             process_mock.configure_mock(**attrs)
-            func.return_value = process_mock
-            self.assertEqual(get_centos_version(), 'centos6')
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_ok
+            data = self.repos1.get_data()
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos6',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(data, mock_data)
 
-    @mock.patch('argo_poem_tools.repos.get_centos_version')
-    def test_build_api_url(self, func):
-        func.return_value = 'centos7'
-        self.assertEqual(
-            build_api_url('egi.tenant.com'),
-            'https://egi.tenant.com/api/v2/repos/centos7'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_hostname_http(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_ok
+            data = self.repos2.get_data()
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos6',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1]'},
+                timeout=180
+            )
+            self.assertEqual(data, mock_data)
 
-    @mock.patch('argo_poem_tools.repos.get_centos_version')
-    def test_build_api_url_if_hostname_with_http(self, func):
-        func.return_value = 'centos7'
-        self.assertEqual(
-            build_api_url('http://egi.tenant.com'),
-            'https://egi.tenant.com/api/v2/repos/centos7'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_hostname_https(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_ok
+            data = self.repos1.get_data()
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos6',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(data, mock_data)
 
-    @mock.patch('argo_poem_tools.repos.get_centos_version')
-    def test_build_api_url_if_hostname_with_https(self, func):
-        func.return_value = 'centos7'
-        self.assertEqual(
-            build_api_url('https://egi.tenant.com'),
-            'https://egi.tenant.com/api/v2/repos/centos7'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_server_error(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_server_error
+            self.assertRaises(
+                requests.exceptions.RequestException,
+                self.repos1.get_data
+            )
 
-    @mock.patch('argo_poem_tools.repos.get_centos_version')
-    def test_build_api_url_if_hostname_with_trailing_slash(self, func):
-        func.return_value = 'centos7'
-        self.assertEqual(
-            build_api_url('egi.tenant.com/'),
-            'https://egi.tenant.com/api/v2/repos/centos7'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_wrong_url(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_wrong_url
+            self.assertRaises(
+                requests.exceptions.RequestException,
+                self.repos1.get_data
+            )
 
-    @mock.patch('argo_poem_tools.repos.get_centos_version')
-    def test_build_api_url_if_hostname_with_trailing_slash_and_http(self, func):
-        func.return_value = 'centos7'
-        self.assertEqual(
-            build_api_url('http://egi.tenant.com/'),
-            'https://egi.tenant.com/api/v2/repos/centos7'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_wrong_token(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_wrong_token
+            self.assertRaises(
+                requests.exceptions.RequestException,
+                self.repos1.get_data
+            )
 
-    def test_refine_profiles(self):
-        self.assertEqual(
-            refine_list_of_profiles(['ARGO_MON', 'ARGO_MON_TEST']),
-            '[ARGO_MON, ARGO_MON_TEST]'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_no_profiles(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_wrong_profiles
+            self.assertRaises(
+                requests.exceptions.RequestException,
+                self.repos1.get_data
+            )
 
-    def test_refine_profiles_if_one(self):
-        self.assertEqual(
-            refine_list_of_profiles(['ARGO_MON']),
-            '[ARGO_MON]'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_get_data_if_json_without_details(
+                self, mock_request, mock_sp
+        ):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_json_without_details_key
+            self.assertRaises(
+                requests.exceptions.RequestException,
+                self.repos1.get_data
+            )
 
-    @mock.patch('requests.get', side_effect=mock_request)
-    def test_get_repo_data(self, func):
-        self.assertEqual(
-            get_repo_data('url', 'token', 'profiles'),
-            data
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_create_file(self, mock_request, mock_sp):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_ok
+            files = self.repos1.create_file(path=os.getcwd())
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos6',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
+            )
+            self.assertTrue(os.path.exists('argo-devel.repo'))
+            self.assertTrue(os.path.exists('nordugrid-updates.repo'))
 
-    @mock.patch('requests.get', side_effect=mock_request_wrong_url)
-    def test_get_repo_data_if_wrong_url(self, func):
-        self.assertRaises(
-            requests.exceptions.RequestException,
-            get_repo_data,
-            url='wrong-url',
-            token='token',
-            profiles='profiles'
-        )
+            with open('argo-devel.repo', 'r') as f:
+                content1 = f.read()
 
-    @mock.patch('requests.get', side_effect=mock_request_wrong_token)
-    def test_get_repo_data_if_wrong_token(self, func):
-        self.assertRaises(
-            requests.exceptions.RequestException,
-            get_repo_data,
-            url='url',
-            token='wrong-token',
-            profiles='profiles'
-        )
+            with open('nordugrid-updates.repo', 'r') as f:
+                content2 = f.read()
 
-    @mock.patch('requests.get', side_effect=mock_request_wrong_profiles)
-    def test_get_repo_data_if_wrong_profiles(self, func):
-        self.assertRaises(
-            requests.exceptions.RequestException,
-            get_repo_data,
-            url='url',
-            token='token',
-            profiles=''
-        )
+            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
+            self.assertEqual(
+                content2, mock_data[0]['nordugrid-updates']['content']
+            )
 
-    @mock.patch('requests.get', side_effect=mock_request_server_error)
-    def test_get_repo_data_if_server_error(self, func):
-        self.assertRaises(
-            requests.exceptions.RequestException,
-            get_repo_data,
-            url='url',
-            token='token',
-            profiles='profiles'
-        )
+        @mock.patch('argo_poem_tools.repos.subprocess.Popen')
+        @mock.patch('argo_poem_tools.repos.requests.get')
+        def test_do_override_file_which_already_exists(
+                self, mock_request, mock_sp
+        ):
+            process_mock = mock.Mock()
+            attrs = {
+                'communicate.return_value': (
+                    'centos-release-6-10.el6.centos.12.3.x86_64',
+                    ''
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            mock_sp.return_value = process_mock
+            mock_request.side_effect = mock_request_ok
+            with open('argo-devel.repo', 'w') as f:
+                f.write('test')
 
-    @mock.patch('requests.get')
-    def test_get_repo_data_if_json_without_details(self, mock_request):
-        mock_request.side_effect = mock_request_json_without_details_key
-        self.assertRaises(
-            requests.exceptions.RequestException,
-            get_repo_data,
-            url='url',
-            token='token',
-            profiles='profiles'
-        )
+            files = self.repos1.create_file(os.getcwd())
+            mock_request.assert_called_once_with(
+                'https://mock.url.com/api/v2/repos/centos6',
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            )
+            self.assertEqual(
+                files,
+                [os.path.join(os.getcwd(), 'argo-devel.repo'),
+                 os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
+            )
+            self.assertTrue(os.path.exists('argo-devel.repo'))
+            self.assertTrue(os.path.exists('nordugrid-updates.repo'))
+
+            with open('argo-devel.repo', 'r') as f:
+                content1 = f.read()
+
+            with open('nordugrid-updates.repo', 'r') as f:
+                content2 = f.read()
+
+            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
+            self.assertEqual(
+                content2, mock_data[0]['nordugrid-updates']['content']
+            )
 
 
 if __name__ == '__main__':
