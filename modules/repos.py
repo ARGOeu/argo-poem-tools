@@ -1,66 +1,80 @@
-#!/usr/bin/python
 import os
-import requests
 import subprocess
 import sys
 
+import requests
 
-def get_repo_data(url, token, profiles):
-    headers = {
-        'x-api-key': token, 'profiles': refine_list_of_profiles(profiles)
-    }
-    response = requests.get(url, headers=headers, timeout=180)
 
-    if response.status_code == 200:
-        if response.json():
-            return response.json()
+class YUMRepos:
+    def __init__(self, hostname, token, profiles):
+        self.hostname = hostname
+        self.token = token
+        self.profiles = profiles
+        self.data = None
 
-    else:
-        if response.json() and 'detail' in response.json():
-            msg = response.json()['detail']
+    def get_data(self):
+        headers = {
+            'x-api-key': self.token,
+            'profiles': self._refine_list_of_profiles()
+        }
+        response = requests.get(self._build_url(), headers=headers, timeout=180)
+
+        if response.status_code == 200:
+            data = response.json()
+            self.data = data
+            return data
+
         else:
-            msg = '%s %s' % (response.status_code, response.reason)
+            try:
+                msg = response.json()['detail']
 
-        raise requests.exceptions.RequestException(msg)
+            except (ValueError, TypeError, KeyError):
+                msg = '%s %s' % (response.status_code, response.reason)
 
+            raise requests.exceptions.RequestException(msg)
 
-def create_yum_repo_file(data, path='/etc/yum.repos.d'):
-    for key, value in data[0].items():
-        title = key
-        content = value['content']
+    def create_file(self, path='/etc/yum.repos.d'):
+        if not self.data:
+            self.get_data()
 
-        with open(os.path.join(path, title + '.repo'), 'w') as f:
-            f.write(content)
+        files = []
+        for key, value in self.data[0].items():
+            title = key
+            content = value['content']
 
+            files.append(os.path.join(path, title + '.repo'))
+            with open(os.path.join(path, title + '.repo'), 'w') as f:
+                f.write(content)
 
-def get_centos_version():
-    if sys.version_info[1] >= 7:
-        string = subprocess.check_output(['rpm', '-q', 'centos-release'])
+        return sorted(files)
 
-    else:
-        string = subprocess.Popen(
-            ['rpm', '-q', 'centos-release'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        ).communicate()[0]
+    @classmethod
+    def _get_centos_version(cls):
+        if sys.version_info[1] >= 7:
+            string = subprocess.check_output(['rpm', '-q', 'centos-release'])
 
-    return 'centos' + string.split('-')[2]
+        else:
+            string = subprocess.Popen(
+                ['rpm', '-q', 'centos-release'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            ).communicate()[0]
 
+        return 'centos' + string.split('-')[2]
 
-def build_api_url(hostname):
-    if hostname.startswith('https://'):
-        hostname = hostname[8:]
+    def _build_url(self):
+        hostname = self.hostname
+        if hostname.startswith('https://'):
+            hostname = hostname[8:]
 
-    if hostname.startswith('http://'):
-        hostname = hostname[7:]
+        if hostname.startswith('http://'):
+            hostname = hostname[7:]
 
-    if hostname.endswith('/'):
-        hostname = hostname[0:-1]
+        if hostname.endswith('/'):
+            hostname = hostname[0:-1]
 
-    return 'https://' + hostname + '/api/v2/repos/' + get_centos_version()
+        return 'https://' + hostname + '/api/v2/repos/' + \
+               self._get_centos_version()
 
-
-def refine_list_of_profiles(profiles):
-    profiles = '[' + ', '.join(profiles) + ']'
-
-    return profiles
+    def _refine_list_of_profiles(self):
+        return '[' + ', '.join(self.profiles) + ']'
