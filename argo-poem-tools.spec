@@ -2,7 +2,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.1.2
+Version:       0.1.3
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Jul 8 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.3-1%{?dist}
+- ARGO-2471 Create dry-run for argo-poem-tools
+- ARGO-2456 Fetching packages fails when API is unavailable
 * Mon Mar 16 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.2-1%{?dist}
 - ARGO-2292 Load parameters from config file
 * Fri Feb 28 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.1-1%{?dist}
