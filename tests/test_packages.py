@@ -4,53 +4,51 @@ import unittest
 import mock
 from argo_poem_tools.packages import Packages
 
-data = [
-    {
-        "argo-devel": {
-            "content": "[argo-devel]\n"
-                       "name=ARGO Product Repository\n"
-                       "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
-                       "devel/centos6/\n"
-                       "gpgcheck=0\n"
-                       "enabled=1\n"
-                       "priority=99\n"
-                       "exclude=\n"
-                       "includepkgs=\n",
-            "packages": [
-                {
-                    "name": "nagios-plugins-fedcloud",
-                    "version": "0.5.0"
-                },
-                {
-                    "name": "nagios-plugins-igtf",
-                    "version": "1.4.0"
-                },
-                {
-                    "name": "nagios-plugins-globus",
-                    "version": "0.1.5"
-                }
-            ]
-        },
-        "nordugrid-updates": {
-            "content": "[nordugrid-updates]\n"
-                       "name=NorduGrid - $basearch - Updates\n"
-                       "baseurl=http://download.nordugrid.org/repos/6"
-                       "/centos/el6/$basearch/updates\n"
-                       "enabled=1\n"
-                       "gpgcheck=1\n"
-                       "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
-                       "nordugrid-6\n"
-                       "priority=1\n"
-                       "exclude=ca_*\n",
-            "packages": [
-                {
-                    "name": "nordugrid-arc-nagios-plugins",
-                    "version": "present"
-                }
-            ]
-        }
+data = {
+    "argo-devel": {
+        "content": "[argo-devel]\n"
+                   "name=ARGO Product Repository\n"
+                   "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
+                   "devel/centos6/\n"
+                   "gpgcheck=0\n"
+                   "enabled=1\n"
+                   "priority=99\n"
+                   "exclude=\n"
+                   "includepkgs=\n",
+        "packages": [
+            {
+                "name": "nagios-plugins-fedcloud",
+                "version": "0.5.0"
+            },
+            {
+                "name": "nagios-plugins-igtf",
+                "version": "1.4.0"
+            },
+            {
+                "name": "nagios-plugins-globus",
+                "version": "0.1.5"
+            }
+        ]
+    },
+    "nordugrid-updates": {
+        "content": "[nordugrid-updates]\n"
+                   "name=NorduGrid - $basearch - Updates\n"
+                   "baseurl=http://download.nordugrid.org/repos/6"
+                   "/centos/el6/$basearch/updates\n"
+                   "enabled=1\n"
+                   "gpgcheck=1\n"
+                   "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
+                   "nordugrid-6\n"
+                   "priority=1\n"
+                   "exclude=ca_*\n",
+        "packages": [
+            {
+                "name": "nordugrid-arc-nagios-plugins",
+                "version": "present"
+            }
+        ]
     }
-]
+}
 
 
 def mock_func(*args, **kwargs):

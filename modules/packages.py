@@ -15,7 +15,7 @@ class Packages:
 
     def _list(self):
         list_packages = []
-        for key, value in self.data[0].items():
+        for key, value in self.data.items():
             for item in value['packages']:
                 if item['version'] == 'present':
                     list_packages.append((item['name'],))
