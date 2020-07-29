@@ -84,7 +84,15 @@ def main():
                 sys.exit(1)
 
             else:
+                missing_packages_msg = ''
+                if repos.missing_packages:
+                    missing_packages_msg = \
+                        'Missing packages for given distro: ' + \
+                        ', '.join(repos.missing_packages)
+                    logger.warning(missing_packages_msg)
+
                 if not noop:
+                    print 'WARNING: ' + missing_packages_msg
                     logger.info('ok!')
                 sys.exit(0)
 
