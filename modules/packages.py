@@ -31,12 +31,15 @@ class Packages:
         all.
         """
         pkgs = self.yb.pkgSack.returnPackages()
-        self.available_packages = [(pkg.name, pkg.version) for pkg in pkgs]
+        self.available_packages = [
+            (pkg.name, pkg.version, pkg.release) for pkg in pkgs
+        ]
+        available_vr = [(pkg.name, pkg.version) for pkg in pkgs]
 
         wrong_version = []
         not_found = []
         for item in self.package_list:
-            if len(item) > 1 and item not in self.available_packages and \
+            if len(item) > 1 and item not in available_vr and \
                     item[0] in [a[0] for a in self.available_packages]:
                 avail_versions = \
                     [a for a in self.available_packages if a[0] == item[0]]
@@ -53,7 +56,7 @@ class Packages:
 
                 else:
                     wrong_version.append(
-                        [a for a in self.available_packages if
+                        [(a[0], a[1]) for a in self.available_packages if
                          a[0] == item[0]][0]
                     )
 
@@ -65,7 +68,7 @@ class Packages:
 
     def _get(self):
         pkgs = self.yb.rpmdb.returnPackages()
-        installed = [(pkg.name, pkg.version) for pkg in pkgs]
+        installed = [(pkg.name, pkg.version, pkg.release) for pkg in pkgs]
 
         if not self.packages_different_version:
             self._get_exceptions()
@@ -76,18 +79,40 @@ class Packages:
         upgrade = []
         downgrade = []
         for item in self.package_list:
-            if item[0] in [x[0] for x in installed]:
+            if item[0] in [x[0] for x in installed] and \
+                    item[0] not in self.packages_not_found:
                 installed_ver = installed[
                     [x[0] for x in installed].index(item[0])
                 ][1]
+                installed_release = installed[
+                    [x[0] for x in installed].index(item[0])
+                ][2]
+
+                available_items = [
+                    pkg for pkg in self.available_packages if item[0] == pkg[0]
+                ]
+
+                if len(available_items) > 0:
+                    max_version = available_items[0]
+                    for version in available_items:
+                        if rpm.labelCompare(
+                                ('mock', version[1], version[2]),
+                                ('mock', max_version[1], max_version[2])
+                        ) > 0:
+                            max_version = version
 
                 if item not in diff_versions_names:
                     if len(item) > 1:
-                        change_tuple = (item[0] + '-' + installed_ver,
-                                        '-'.join(item))
+                        if item[1] == installed_ver:
+                            change_tuple = ('-'.join(item),)
+                        else:
+                            change_tuple = (
+                                item[0] + '-' + installed_ver, '-'.join(item)
+                            )
+
                         if rpm.labelCompare(
-                                ('mock', item[1], 'mock'),
-                                ('mock', installed_ver, 'mock')
+                                ('mock', max_version[1], max_version[2]),
+                                ('mock', installed_ver, installed_release)
                         ) > 0:
                             upgrade.append(change_tuple)
                         elif rpm.labelCompare(
@@ -97,10 +122,14 @@ class Packages:
                             downgrade.append(change_tuple)
 
                         else:
-                            upgrade.append(('-'.join(item),))
+                            continue
 
                     else:
-                        upgrade.append(item)
+                        if rpm.labelCompare(
+                            ('mock', max_version[1], max_version[2]),
+                            ('mock', installed_ver, installed_release)
+                        ) > 0:
+                            upgrade.append(item)
 
             else:
                 if item not in self.packages_not_found and \
@@ -115,7 +144,7 @@ class Packages:
             orig_item = self.package_list[
                 [p[0] for p in self.package_list].index(item[0])
             ]
-            diff_ver.append(('-'.join(orig_item), '-'.join(item)))
+            diff_ver.append(('-'.join(orig_item), '-'.join(item[0:2])))
 
         not_found = []
         for item in self.packages_not_found:
