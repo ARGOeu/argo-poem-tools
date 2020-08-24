@@ -92,7 +92,8 @@ def main():
                     logger.warning(missing_packages_msg)
 
                 if not noop:
-                    print 'WARNING: ' + missing_packages_msg
+                    if missing_packages_msg:
+                        print 'WARNING: ' + missing_packages_msg
                     logger.info('ok!')
                 sys.exit(0)
 
