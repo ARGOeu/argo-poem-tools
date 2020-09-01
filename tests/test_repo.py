@@ -7,8 +7,8 @@ import mock
 import requests
 from argo_poem_tools.repos import YUMRepos
 
-mock_data = [
-    {
+mock_data = {
+    "data": {
         "argo-devel": {
             "content": "[argo-devel]\n"
                        "name=ARGO Product Repository\n"
@@ -52,8 +52,11 @@ mock_data = [
                 }
             ]
         }
-    }
-]
+    },
+    "missing_packages": [
+        "nagios-plugins-bdii (1.0.14)",
+        "nagios-plugins-egi-notebooks (0.2.3)"]
+}
 
 
 class MockResponse:
@@ -152,7 +155,14 @@ class YUMReposTests(unittest.TestCase):
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
             )
-            self.assertEqual(data, mock_data)
+            self.assertEqual(data, mock_data['data'])
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
+            )
 
         @mock.patch('argo_poem_tools.repos.subprocess.check_output')
         @mock.patch('argo_poem_tools.repos.requests.get')
@@ -166,7 +176,14 @@ class YUMReposTests(unittest.TestCase):
                          'profiles': '[TEST_PROFILE1]'},
                 timeout=180
             )
-            self.assertEqual(data, mock_data)
+            self.assertEqual(data, mock_data['data'])
+            self.assertEqual(
+                self.repos2.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
+            )
 
         @mock.patch('argo_poem_tools.repos.subprocess.check_output')
         @mock.patch('argo_poem_tools.repos.requests.get')
@@ -180,7 +197,14 @@ class YUMReposTests(unittest.TestCase):
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
             )
-            self.assertEqual(data, mock_data)
+            self.assertEqual(data, mock_data['data'])
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
+            )
 
         @mock.patch('argo_poem_tools.repos.subprocess.check_output')
         @mock.patch('argo_poem_tools.repos.requests.get')
@@ -262,9 +286,18 @@ class YUMReposTests(unittest.TestCase):
             with open('nordugrid-updates.repo', 'r') as f:
                 content2 = f.read()
 
-            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
             self.assertEqual(
-                content2, mock_data[0]['nordugrid-updates']['content']
+                content1, mock_data['data']['argo-devel']['content']
+            )
+            self.assertEqual(
+                content2, mock_data['data']['nordugrid-updates']['content']
+            )
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
             )
 
         @mock.patch('argo_poem_tools.repos.subprocess.check_output')
@@ -298,9 +331,18 @@ class YUMReposTests(unittest.TestCase):
             with open('nordugrid-updates.repo', 'r') as f:
                 content2 = f.read()
 
-            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
             self.assertEqual(
-                content2, mock_data[0]['nordugrid-updates']['content']
+                content1, mock_data['data']['argo-devel']['content']
+            )
+            self.assertEqual(
+                content2, mock_data['data']['nordugrid-updates']['content']
+            )
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
             )
 
     else:
@@ -324,7 +366,14 @@ class YUMReposTests(unittest.TestCase):
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
             )
-            self.assertEqual(data, mock_data)
+            self.assertEqual(data, mock_data['data'])
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
+            )
 
         @mock.patch('argo_poem_tools.repos.subprocess.Popen')
         @mock.patch('argo_poem_tools.repos.requests.get')
@@ -346,7 +395,14 @@ class YUMReposTests(unittest.TestCase):
                          'profiles': '[TEST_PROFILE1]'},
                 timeout=180
             )
-            self.assertEqual(data, mock_data)
+            self.assertEqual(data, mock_data['data'])
+            self.assertEqual(
+                self.repos2.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
+            )
 
         @mock.patch('argo_poem_tools.repos.subprocess.Popen')
         @mock.patch('argo_poem_tools.repos.requests.get')
@@ -368,7 +424,14 @@ class YUMReposTests(unittest.TestCase):
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
             )
-            self.assertEqual(data, mock_data)
+            self.assertEqual(data, mock_data['data'])
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
+            )
 
         @mock.patch('argo_poem_tools.repos.subprocess.Popen')
         @mock.patch('argo_poem_tools.repos.requests.get')
@@ -496,9 +559,18 @@ class YUMReposTests(unittest.TestCase):
             with open('nordugrid-updates.repo', 'r') as f:
                 content2 = f.read()
 
-            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
             self.assertEqual(
-                content2, mock_data[0]['nordugrid-updates']['content']
+                content1, mock_data['data']['argo-devel']['content']
+            )
+            self.assertEqual(
+                content2, mock_data['data']['nordugrid-updates']['content']
+            )
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
             )
 
         @mock.patch('argo_poem_tools.repos.subprocess.Popen')
@@ -540,9 +612,18 @@ class YUMReposTests(unittest.TestCase):
             with open('nordugrid-updates.repo', 'r') as f:
                 content2 = f.read()
 
-            self.assertEqual(content1, mock_data[0]['argo-devel']['content'])
             self.assertEqual(
-                content2, mock_data[0]['nordugrid-updates']['content']
+                content1, mock_data['data']['argo-devel']['content']
+            )
+            self.assertEqual(
+                content2, mock_data['data']['nordugrid-updates']['content']
+            )
+            self.assertEqual(
+                self.repos1.missing_packages,
+                [
+                    'nagios-plugins-bdii (1.0.14)',
+                    'nagios-plugins-egi-notebooks (0.2.3)'
+                ]
             )
 
 

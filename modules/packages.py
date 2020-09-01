@@ -15,7 +15,7 @@ class Packages:
 
     def _list(self):
         list_packages = []
-        for key, value in self.data[0].items():
+        for key, value in self.data.items():
             for item in value['packages']:
                 if item['version'] == 'present':
                     list_packages.append((item['name'],))
@@ -31,12 +31,15 @@ class Packages:
         all.
         """
         pkgs = self.yb.pkgSack.returnPackages()
-        self.available_packages = [(pkg.name, pkg.version) for pkg in pkgs]
+        self.available_packages = [
+            (pkg.name, pkg.version, pkg.release) for pkg in pkgs
+        ]
+        available_vr = [(pkg.name, pkg.version) for pkg in pkgs]
 
         wrong_version = []
         not_found = []
         for item in self.package_list:
-            if len(item) > 1 and item not in self.available_packages and \
+            if len(item) > 1 and item not in available_vr and \
                     item[0] in [a[0] for a in self.available_packages]:
                 avail_versions = \
                     [a for a in self.available_packages if a[0] == item[0]]
@@ -53,7 +56,7 @@ class Packages:
 
                 else:
                     wrong_version.append(
-                        [a for a in self.available_packages if
+                        [(a[0], a[1]) for a in self.available_packages if
                          a[0] == item[0]][0]
                     )
 
@@ -63,59 +66,133 @@ class Packages:
         self.packages_different_version = wrong_version
         self.packages_not_found = not_found
 
-    def _get(self):
-        pkgs = self.yb.rpmdb.returnPackages()
-        installed = [(pkg.name, pkg.version) for pkg in pkgs]
+    @staticmethod
+    def _get_max_verson(available_packages):
+        max_version = available_packages[0]
+        for version in available_packages:
+            if rpm.labelCompare(
+                    ('mock', version[1], version[2]),
+                    ('mock', max_version[1], max_version[2])
+            ) > 0:
+                max_version = version
 
+        return max_version
+
+    def _get(self):
         if not self.packages_different_version:
             self._get_exceptions()
 
+        pkgs = self.yb.rpmdb.returnPackages()
+        installed_packages = [
+            (pkg.name, pkg.version, pkg.release) for pkg in pkgs
+        ]
+
+        # list of installed packages' name
+        installed_names = [pkg[0] for pkg in installed_packages]
+
+        # list of packages which are available with different version
         diff_versions_names = [p[0] for p in self.packages_different_version]
+
+        # list of packages which are available in repos (both name and version)
+        installable_packages = [
+            pkg for pkg in self.package_list if
+            pkg not in self.packages_not_found and
+            pkg[0] not in diff_versions_names
+        ]
 
         install = []
         upgrade = []
         downgrade = []
-        for item in self.package_list:
-            if item[0] in [x[0] for x in installed]:
-                installed_ver = installed[
-                    [x[0] for x in installed].index(item[0])
+        for item in installable_packages:
+            if item[0] in installed_names:
+                installed_ver = installed_packages[
+                    installed_names.index(item[0])
                 ][1]
+                installed_release = installed_packages[
+                    installed_names.index(item[0])
+                ][2]
 
-                if item not in diff_versions_names:
-                    if len(item) > 1:
-                        change_tuple = (item[0] + '-' + installed_ver,
-                                        '-'.join(item))
-                        if rpm.labelCompare(
-                                ('mock', item[1], 'mock'),
-                                ('mock', installed_ver, 'mock')
-                        ) > 0:
-                            upgrade.append(change_tuple)
-                        elif rpm.labelCompare(
-                                ('mock', item[1], 'mock'),
-                                ('mock', installed_ver, 'mock')
-                        ) < 0:
-                            downgrade.append(change_tuple)
+                # all the available packages with the given name and version
+                if len(item) > 1:
+                    available_items = [
+                        pkg for pkg in self.available_packages
+                        if item[0] == pkg[0] and item[1] == pkg[1]
+                    ]
 
-                        else:
-                            upgrade.append(('-'.join(item),))
+                else:
+                    available_items = [
+                        pkg for pkg in self.available_packages
+                        if item[0] == pkg[0]
+                    ]
 
+                max_version = self._get_max_verson(available_items)
+
+                if len(item) > 1:
+                    if item[1] == installed_ver:
+                        change_tuple = ('-'.join(item),)
                     else:
-                        upgrade.append(item)
+                        change_tuple = (
+                            item[0] + '-' + installed_ver, '-'.join(item)
+                        )
+
+                else:
+                    change_tuple = item
+
+                if rpm.labelCompare(
+                        ('mock', max_version[1], max_version[2]),
+                        ('mock', installed_ver, installed_release)
+                ) > 0:
+                    upgrade.append(change_tuple)
+
+                elif rpm.labelCompare(
+                        ('mock', max_version[1], max_version[2]),
+                        ('mock', installed_ver, installed_release)
+                ) < 0:
+                    downgrade.append(change_tuple)
+
+                else:
+                    continue
 
             else:
-                if item not in self.packages_not_found and \
-                        item[0] not in diff_versions_names:
-                    if len(item) == 2:
-                        install.append('-'.join(item))
-                    else:
-                        install.append(item[0])
+                if len(item) == 2:
+                    install.append('-'.join(item))
+                else:
+                    install.append(item[0])
 
         diff_ver = []
         for item in self.packages_different_version:
             orig_item = self.package_list[
                 [p[0] for p in self.package_list].index(item[0])
             ]
-            diff_ver.append(('-'.join(orig_item), '-'.join(item)))
+
+            if item[0] in installed_names:
+                installed_ver = installed_packages[
+                    installed_names.index(item[0])
+                ][1]
+                installed_release = installed_packages[
+                    installed_names.index(item[0])
+                ][2]
+
+                available_items = [
+                    pkg for pkg in self.available_packages if
+                    item[0] == pkg[0]
+                ]
+
+                max_version = self._get_max_verson(available_items)
+
+                if rpm.labelCompare(
+                        ('mock', max_version[1], max_version[2]),
+                        ('mock', installed_ver, installed_release)
+                ) > 0:
+                    if max_version[1] != installed_ver:
+                        diff_ver.append(
+                            ('-'.join(orig_item), '{}-{}'.format(
+                                item[0], max_version[1])
+                             )
+                        )
+
+            else:
+                diff_ver.append(('-'.join(orig_item), '-'.join(item[0:2])))
 
         not_found = []
         for item in self.packages_not_found:

@@ -11,6 +11,7 @@ class YUMRepos:
         self.token = token
         self.profiles = profiles
         self.data = None
+        self.missing_packages = None
 
     def get_data(self):
         headers = {
@@ -21,8 +22,9 @@ class YUMRepos:
 
         if response.status_code == 200:
             data = response.json()
-            self.data = data
-            return data
+            self.data = data['data']
+            self.missing_packages = data['missing_packages']
+            return self.data
 
         else:
             try:
@@ -38,7 +40,7 @@ class YUMRepos:
             self.get_data()
 
         files = []
-        for key, value in self.data[0].items():
+        for key, value in self.data.items():
             title = key
             content = value['content']
 
