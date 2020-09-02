@@ -2,7 +2,7 @@
 import unittest
 from unittest import mock
 
-from argo_poem_tools.packages import Packages
+from argo_poem_tools.packages import Packages, _compare_versions, _compare_vr
 
 data = {
     "argo-devel": {
@@ -78,6 +78,56 @@ def mock_func(*args, **kwargs):
     pass
 
 
+class RPMTests(unittest.TestCase):
+    def test_compare_versions(self):
+        self.assertEqual(_compare_versions('1.0.0', '1.0.0'), 0)
+        self.assertEqual(_compare_versions('2.0.0', '1.0.0'), 1)
+        self.assertEqual(_compare_versions('1.1.0', '1.0.0'), 1)
+        self.assertEqual(_compare_versions('1.0.1', '1.0.0'), 1)
+        self.assertEqual(_compare_versions('1.1.1', '1.0.0'), 1)
+        self.assertEqual(_compare_versions('1.0.0', '2.1.0'), -1)
+        self.assertEqual(_compare_versions('1.0.0', '1.1.0'), -1)
+        self.assertEqual(_compare_versions('1.0.0', '1.1.1'), -1)
+        self.assertEqual(_compare_versions('1.0.0', '1.0.2'), -1)
+        self.assertEqual(_compare_versions('0.1', '1.0'), -1)
+        self.assertEqual(_compare_versions('0.2', '0.1'), 1)
+        self.assertEqual(_compare_versions('2', '1'), 1)
+        self.assertEqual(_compare_versions('1', '2'), -1)
+        self.assertEqual(
+            _compare_versions(
+                '20200408044026.7943b04.el7',
+                '20200408052214.4d1470e.el7'
+            ), -1
+        )
+
+    def test_compare_vr(self):
+        self.assertEqual(
+            _compare_vr(
+                ('0.5.2', '20200408044026.7943b04.el7'),
+                ('0.5.2', '20200408052214.4d1470e.el7')
+            ),
+            -1
+        )
+        self.assertEqual(
+            _compare_vr(
+                ('0.5.3', '20200408044026.7943b04.el7'),
+                ('0.5.2', '20200408052214.4d1470e.el7')
+            ),
+            1
+        )
+        self.assertEqual(
+            _compare_vr(
+                ('0.5.2', '20200408052214.4d1470e.el7'),
+                ('0.5.2', '20200408052214.4d1470e.el7')
+            ),
+            0
+        )
+        self.assertEqual(_compare_vr(('1', '1.el7'), ('1', '2.el7')), -1)
+        self.assertEqual(_compare_vr(('2', '1.el7'), ('1', '2.el7')), 1)
+        self.assertEqual(_compare_vr(('0.0.1', '1.el7'), ('1.0.0', '2.el7')), -1)
+        self.assertEqual(_compare_vr(('2.0.1', '1.el7'), ('1.0.0', '2.el7')), 1)
+
+
 class PackageTests(unittest.TestCase):
     def setUp(self):
         self.pkgs = Packages(data)
@@ -116,17 +166,14 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('argo_poem_tools.packages.yum.YumBase.pkgSack')
-    @mock.patch('argo_poem_tools.packages.yum.YumBase.rpmdb')
-    def test_get_exceptions(self, mock_rpmdb, mock_yumdb):
-        mock1 = mock.Mock(version='0.6.0', release='20200511071632.05e2501.el6')
-        mock2 = mock.Mock(version='1.4.0', release='3.el6')
-        mock3 = mock.Mock(version='2.3.3', release='1.el6')
-        mock1.name = 'nagios-plugins-fedcloud'
-        mock2.name = 'nagios-plugins-igtf'
-        mock3.name = 'nagios-plugins-http'
-        mock_rpmdb.returnPackages.return_value = []
-        mock_yumdb.returnPackages.return_value = [mock1, mock2, mock3]
+    @mock.patch('argo_poem_tools.packages.Packages._get_available_packages')
+    def test_get_exceptions(self, mock_yumdb):
+        mock_yumdb.return_value = [
+            dict(name='nagios-plugins-fedcloud', version='0.6.0',
+                 release='20200511071632.05e2501.el7'),
+            dict(name='nagios-plugins-igtf', version='1.4.0', release='3.el7'),
+            dict(name='nagios-plugins-http', version='2.3.3', release='1.el7')
+        ]
         self.pkgs._get_exceptions()
         self.assertEqual(
             self.pkgs.packages_different_version,

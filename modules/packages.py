@@ -1,19 +1,68 @@
 import subprocess
 
 import rpm
-import yum
 
 
 def _pop_arch(pkg_string):
+    """
+    Pop arch info from RPM package string.
+    :param pkg_string: string with arch info
+    :return: RPM package string without arch info
+    """
     pkg_string_split = pkg_string.split('.')
     pkg = '.'.join(pkg_string_split[:-1])
     return pkg
 
 
+def _compare_versions(v1, v2):
+    """
+    Compares two RPM version strings.
+    :param v1: first string version
+    :param v2: second string version
+    :return: 1 if v1 is newer, 0 if they are equal, -1 if v2 is newer
+    """
+    if v1 == v2:
+        return 0
+
+    else:
+        v1_list = v1.split('.')
+        v2_list = v2.split('.')
+        for i in range(len(v1_list)):
+            if v1_list[i] > v2_list[i]:
+                return 1
+
+            elif v1_list[i] < v2_list[i]:
+                return -1
+
+            else:
+                continue
+
+
+def _compare_vr(vr1, vr2):
+    """
+    Compares two RPM (version, release) tuples.
+    :param vr1: first (version, release) tuple
+    :param vr2: second (version, release) tuple
+    :return: 1 if vr1 is newer, 0 if equal, -1 if vr2 is newer
+    """
+    v1, r1 = vr1
+    v2, r2 = vr2
+
+    if v1 == v2:
+        if r1 == r2:
+            return 0
+
+        else:
+            return _compare_versions(r1, r2)
+
+    else:
+        return _compare_versions(v1, v2)
+
+
 class Packages:
     def __init__(self, data):
         self.data = data
-        self.yb = yum.YumBase()
+        # self.yb = yum.YumBase()
         self.package_list = self._list()
         self.packages_different_version = None
         self.packages_not_found = None
@@ -60,11 +109,11 @@ class Packages:
         them are found with different version and which one are not found at
         all.
         """
-        pkgs = self.yb.pkgSack.returnPackages()
+        pkgs = self._get_available_packages()
         self.available_packages = [
-            (pkg.name, pkg.version, pkg.release) for pkg in pkgs
+            (pkg['name'], pkg['version'], pkg['release']) for pkg in pkgs
         ]
-        available_vr = [(pkg.name, pkg.version) for pkg in pkgs]
+        available_vr = [(pkg['name'], pkg['version']) for pkg in pkgs]
 
         wrong_version = []
         not_found = []
