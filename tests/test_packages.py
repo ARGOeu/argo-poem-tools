@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import unittest
+from unittest import mock
 
-import mock
 from argo_poem_tools.packages import Packages
 
 data = {
@@ -36,14 +36,14 @@ data = {
     },
     "epel": {
         "content": "[epel]\n"
-                   "name=Extra Packages for Enterprise Linux 6 - $basearch\n"
+                   "name=Extra Packages for Enterprise Linux 7 - $basearch\n"
                    "mirrorlist=https://mirrors.fedoraproject.org/metalink?"
-                   "repo=epel-6&arch=$basearch\n"
+                   "repo=epel-7&arch=$basearch\n"
                    "failovermethod=priority\n"
                    "enabled=1\n"
                    "gpgcheck=1\n"
                    "gpgkey=https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-"
-                   "EPEL-6",
+                   "EPEL-7",
         "packages": [
             {
                 "name": "nagios-plugins-http",
@@ -52,6 +52,26 @@ data = {
         ]
     }
 }
+
+mock_yum_list_available = \
+"""
+Loaded plugins: fastestmirror, ovl
+Loading mirror speeds from cached hostfile
+ * base: mirror.centos.plus.hr
+ * epel: centos.anexia.at
+ * extras: mirror.centos.plus.hr
+ * updates: mirror.centos.plus.hr
+Available Packages
+nagios.x86_64                             4.4.5-7.el7                    epel   
+nagios-contrib.x86_64                     4.4.5-7.el7                    epel   
+nagios-devel.x86_64                       4.4.5-7.el7                    epel   
+nagios-plugin-grnet-agora.noarch          0.3-20200731072952.4427855.el7 argo-devel
+nagios-plugins-activemq.noarch            1.0.0-20170401112243.00c5f1d.el7 argo-devel
+nagios-plugins-disk_smb.x86_64            2.3.3-2.el7                    epel   
+nagios-plugins-globus.noarch              0.1.5-20200713050450.eb1e7d8.el7 argo-devel  
+nagios-plugins-gocdb.noarch               1.0.0-20200713050609.a481696.el7 argo-devel  
+
+""".encode('utf-8')
 
 
 def mock_func(*args, **kwargs):
@@ -66,11 +86,33 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(
             self.pkgs.package_list,
             [
-                ('nagios-plugins-http',),
                 ('nagios-plugins-fedcloud', '0.5.0'),
                 ('nagios-plugins-igtf', '1.4.0'),
                 ('nagios-plugins-globus', '0.1.5'),
-                ('nagios-plugins-argo', '0.1.12')
+                ('nagios-plugins-argo', '0.1.12'),
+                ('nagios-plugins-http', )
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_get_available_packages(self, mock_yumdb):
+        mock_yumdb.return_value = mock_yum_list_available
+        self.assertEqual(
+            self.pkgs._get_available_packages(),
+            [
+                dict(name='nagios', version='4.4.5', release='7.el7'),
+                dict(name='nagios-contrib', version='4.4.5', release='7.el7'),
+                dict(name='nagios-devel', version='4.4.5', release='7.el7'),
+                dict(name='nagios-plugin-grnet-agora', version='0.3',
+                     release='20200731072952.4427855.el7'),
+                dict(name='nagios-plugins-activemq', version='1.0.0',
+                     release='20170401112243.00c5f1d.el7'),
+                dict(name='nagios-plugins-disk_smb', version='2.3.3',
+                     release='2.el7'),
+                dict(name='nagios-plugins-globus', version='0.1.5',
+                     release='20200713050450.eb1e7d8.el7'),
+                dict(name='nagios-plugins-gocdb', version='1.0.0',
+                     release='20200713050609.a481696.el7')
             ]
         )
 

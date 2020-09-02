@@ -4,6 +4,12 @@ import rpm
 import yum
 
 
+def _pop_arch(pkg_string):
+    pkg_string_split = pkg_string.split('.')
+    pkg = '.'.join(pkg_string_split[:-1])
+    return pkg
+
+
 class Packages:
     def __init__(self, data):
         self.data = data
@@ -23,6 +29,30 @@ class Packages:
                     list_packages.append((item['name'], item['version']))
 
         return list_packages
+
+    @staticmethod
+    def _get_available_packages():
+        output = subprocess.check_output(['yum', 'list', 'available'])
+        output_list = output.decode('utf-8').split('\n')
+        pkg_index = output_list.index('Available Packages') + 1
+        pkgs = output_list[pkg_index:]
+
+        formatted_pkgs = []
+        for pkg in pkgs:
+            pkg_list = list(filter(None, pkg.split(' ')))
+            if pkg_list:
+                pkg_list_split = pkg_list[1].split('-')
+                version = pkg_list_split[0]
+                release = pkg_list_split[1]
+                formatted_pkgs.append(
+                    dict(
+                        name=_pop_arch(pkg_list[0]),
+                        version=version,
+                        release=release
+                    )
+                )
+
+        return formatted_pkgs
 
     def _get_exceptions(self):
         """
