@@ -1,4 +1,8 @@
 import subprocess
+from re import compile
+
+
+_rpm_re = compile('(\S+)-(?:(\d*):)?(.*)-(~?\w+[\w.]*)')
 
 
 def _pop_arch(pkg_string):
@@ -60,7 +64,6 @@ def _compare_vr(vr1, vr2):
 class Packages:
     def __init__(self, data):
         self.data = data
-        self.yb = yum.YumBase()
         self.package_list = self._list()
         self.packages_different_version = None
         self.packages_not_found = None
@@ -144,6 +147,22 @@ class Packages:
         self.packages_not_found = not_found
 
     @staticmethod
+    def _get_installed_packages():
+        output = subprocess.check_output(['rpm', '-qa'])
+        output_list = output.decode('utf-8').split('\n')
+        pkg_list = []
+        for item in output_list:
+            if item:
+                try:
+                    n, e, v, r = _rpm_re.match(_pop_arch(item.strip())).groups()
+                    pkg_list.append(dict(name=n, version=v, release=r))
+
+                except AttributeError:
+                    continue
+
+        return pkg_list
+
+    @staticmethod
     def _get_max_version(available_packages):
         max_version = available_packages[0]
         for version in available_packages:
@@ -159,9 +178,9 @@ class Packages:
         if not self.packages_different_version:
             self._get_exceptions()
 
-        pkgs = self.yb.rpmdb.returnPackages()
+        pkgs = self._get_installed_packages()
         installed_packages = [
-            (pkg.name, pkg.version, pkg.release) for pkg in pkgs
+            (pkg['name'], pkg['version'], pkg['release']) for pkg in pkgs
         ]
 
         # list of installed packages' name
