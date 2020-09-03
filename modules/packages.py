@@ -1,7 +1,5 @@
 import subprocess
 
-import rpm
-
 
 def _pop_arch(pkg_string):
     """
@@ -62,7 +60,7 @@ def _compare_vr(vr1, vr2):
 class Packages:
     def __init__(self, data):
         self.data = data
-        # self.yb = yum.YumBase()
+        self.yb = yum.YumBase()
         self.package_list = self._list()
         self.packages_different_version = None
         self.packages_not_found = None
@@ -125,9 +123,9 @@ class Packages:
                 if len(avail_versions) > 1:
                     max_version = avail_versions[0]
                     for version in avail_versions:
-                        if rpm.labelCompare(
-                                ('mock', version[1], 'mock'),
-                                ('mock', max_version[1], 'mock')
+                        if _compare_vr(
+                                (version[1], 'mock'),
+                                (max_version[1], 'mock')
                         ) > 0:
                             max_version = version
 
@@ -146,12 +144,12 @@ class Packages:
         self.packages_not_found = not_found
 
     @staticmethod
-    def _get_max_verson(available_packages):
+    def _get_max_version(available_packages):
         max_version = available_packages[0]
         for version in available_packages:
-            if rpm.labelCompare(
-                    ('mock', version[1], version[2]),
-                    ('mock', max_version[1], max_version[2])
+            if _compare_vr(
+                    (version[1], version[2]),
+                    (max_version[1], max_version[2])
             ) > 0:
                 max_version = version
 
@@ -204,7 +202,7 @@ class Packages:
                         if item[0] == pkg[0]
                     ]
 
-                max_version = self._get_max_verson(available_items)
+                max_version = self._get_max_version(available_items)
 
                 if len(item) > 1:
                     if item[1] == installed_ver:
@@ -217,15 +215,15 @@ class Packages:
                 else:
                     change_tuple = item
 
-                if rpm.labelCompare(
-                        ('mock', max_version[1], max_version[2]),
-                        ('mock', installed_ver, installed_release)
+                if _compare_vr(
+                        (max_version[1], max_version[2]),
+                        (installed_ver, installed_release)
                 ) > 0:
                     upgrade.append(change_tuple)
 
-                elif rpm.labelCompare(
-                        ('mock', max_version[1], max_version[2]),
-                        ('mock', installed_ver, installed_release)
+                elif _compare_vr(
+                        (max_version[1], max_version[2]),
+                        (installed_ver, installed_release)
                 ) < 0:
                     downgrade.append(change_tuple)
 
@@ -257,11 +255,11 @@ class Packages:
                     item[0] == pkg[0]
                 ]
 
-                max_version = self._get_max_verson(available_items)
+                max_version = self._get_max_version(available_items)
 
-                if rpm.labelCompare(
-                        ('mock', max_version[1], max_version[2]),
-                        ('mock', installed_ver, installed_release)
+                if _compare_vr(
+                        (max_version[1], max_version[2]),
+                        (installed_ver, installed_release)
                 ) > 0:
                     if max_version[1] != installed_ver:
                         diff_ver.append(
