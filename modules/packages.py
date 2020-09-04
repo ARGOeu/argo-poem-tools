@@ -86,23 +86,27 @@ class Packages:
         output_list = output.decode('utf-8').split('\n')
         pkg_index = output_list.index('Available Packages') + 1
         pkgs = output_list[pkg_index:]
+        pkgs = ' '.join(pkgs)
+        pkg_list = list(filter(None, pkgs.split(' ')))
 
         formatted_pkgs = []
-        for pkg in pkgs:
-            pkg_list = list(filter(None, pkg.split(' ')))
-            if pkg_list:
-                pkg_list_split = pkg_list[1].split('-')
-                version = pkg_list_split[0]
-                release = pkg_list_split[1]
-                formatted_pkgs.append(
-                    dict(
-                        name=_pop_arch(pkg_list[0]),
-                        version=version,
-                        release=release
-                    )
-                )
+        for i in range(0, len(pkg_list), 3):
+            formatted_pkgs.append(pkg_list[i:i + 3])
 
-        return formatted_pkgs
+        pkgs_dicts = []
+        for pkg in formatted_pkgs:
+            pkg_list_split = pkg[1].split('-')
+            version = pkg_list_split[0]
+            release = pkg_list_split[1]
+            pkgs_dicts.append(
+                dict(
+                    name=_pop_arch(pkg[0]),
+                    version=version,
+                    release=release
+                )
+            )
+
+        return pkgs_dicts
 
     def _get_exceptions(self):
         """

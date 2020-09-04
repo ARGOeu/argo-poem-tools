@@ -69,6 +69,8 @@ nagios-plugins-activemq.noarch            1.0.0-20170401112243.00c5f1d.el7 argo-
 nagios-plugins-disk_smb.x86_64            2.3.3-2.el7                    epel   
 nagios-plugins-globus.noarch              0.1.5-20200713050450.eb1e7d8.el7 argo-devel  
 nagios-plugins-gocdb.noarch               1.0.0-20200713050609.a481696.el7 argo-devel  
+NetworkManager-dispatcher-routing-rules.noarch
+                                          1:1.18.4-3.el7                 base
 
 """.encode('utf-8')
 
@@ -175,7 +177,9 @@ class PackageTests(unittest.TestCase):
                 dict(name='nagios-plugins-globus', version='0.1.5',
                      release='20200713050450.eb1e7d8.el7'),
                 dict(name='nagios-plugins-gocdb', version='1.0.0',
-                     release='20200713050609.a481696.el7')
+                     release='20200713050609.a481696.el7'),
+                dict(name='NetworkManager-dispatcher-routing-rules',
+                     version='1:1.18.4', release='3.el7')
             ]
         )
 
