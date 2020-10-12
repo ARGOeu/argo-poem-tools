@@ -4,6 +4,7 @@ import argparse
 import logging
 import subprocess
 import sys
+import logging.handlers
 
 import requests
 from argo_poem_tools.config import Config
@@ -27,15 +28,15 @@ def main():
         stdout = logging.StreamHandler()
         logger.addHandler(stdout)
 
-    # setting up logging to file
-    logfile = logging.FileHandler('/var/log/messages')
-    logfile.setLevel(logging.INFO)
-    logfile.setFormatter(logging.Formatter(
+    # setting up logging to syslog
+    syslog = logging.handlers.SysLogHandler(address='/dev/log')
+    syslog.setLevel(logging.INFO)
+    syslog.setFormatter(logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     ))
 
     # add the handler to the root logger
-    logger.addHandler(logfile)
+    logger.addHandler(syslog)
 
     try:
         subprocess.call(['yum', 'clean', 'all'])
