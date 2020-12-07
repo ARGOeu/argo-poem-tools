@@ -2,7 +2,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.1.4
+Version:       0.1.5
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -60,6 +60,8 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Dec 7 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.5-1%{?dist}
+- ARGO-2565 Use SysLogHandler instead of FileHandler in argo-poem-tools
 * Mon Aug 31 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.4.-1%{?dist}
 - ARGO-2538 Packages missing for a given distro should be reported
 - ARGO-2549 Improve return messages from argo_poem_packages
