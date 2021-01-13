@@ -1,8 +1,10 @@
 %define underscore() %(echo %1 | sed 's/-/_/g')
+%define stripc() %(echo %1 | sed 's/el7.centos/el7/')
+%define mydist %{stripc %{dist}}
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.1.5
+Version:       0.2.0
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -11,13 +13,8 @@ BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Prefix:        %{_prefix}
 BuildArch:     noarch
 
-%if 0%{?el6}
-BuildRequires: python-devel
-Requires:      python-argparse
-%else
-BuildRequires: python2-devel
-%endif
-Requires:      python-requests
+BuildRequires: python3-devel
+Requires:      python36-requests
 
 
 %description
@@ -29,19 +26,11 @@ Script which installs packages on ARGO mon boxes.
 
 
 %build
-%if 0%{?el6}
-%{py_build}
-%else
-%{py2_build}
-%endif
+%{py3_build}
 
 
 %install
-%if 0%{?el6}
-%{py_install "--record=INSTALLED_FILES" }
-%else
-%{py2_install "--record=INSTALLED_FILES" }
-%endif
+%{py3_install "--record=INSTALLED_FILES" }
 
 
 %clean
@@ -51,15 +40,12 @@ rm -rf $RPM_BUILD_ROOT
 %files -f INSTALLED_FILES
 %defattr(-,root,root)
 %config(noreplace) %{_sysconfdir}/%{name}/argo-poem-tools.conf
-%if 0%{?el6}
-%dir %{python_sitelib}/%{underscore %{name}}/
-%{python_sitelib}/%{underscore %{name}}/*.py[co]
-%else
-%dir %{python2_sitelib}/%{underscore %{name}}/
-%{python2_sitelib}/%{underscore %{name}}/*.py[co]
-%endif
+%dir %{python3_sitelib}/%{underscore %{name}}/
+%{python3_sitelib}/%{underscore %{name}}/*.py
 
 %changelog
+* Wed Jan 13 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.0-2%{?dist}
+- ARGO-2564 Switch argo-poem-tools to Py3
 * Mon Dec 7 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.5-1%{?dist}
 - ARGO-2565 Use SysLogHandler instead of FileHandler in argo-poem-tools
 * Mon Aug 31 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.4.-1%{?dist}

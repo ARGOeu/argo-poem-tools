@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 
 import requests
 
@@ -52,15 +51,9 @@ class YUMRepos:
 
     @classmethod
     def _get_centos_version(cls):
-        if sys.version_info[1] >= 7:
-            string = subprocess.check_output(['rpm', '-q', 'centos-release'])
+        string = subprocess.check_output(['rpm', '-q', 'centos-release'])
 
-        else:
-            string = subprocess.Popen(
-                ['rpm', '-q', 'centos-release'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            ).communicate()[0]
+        string = string.decode('utf-8')
 
         return 'centos' + string.split('-')[2]
 

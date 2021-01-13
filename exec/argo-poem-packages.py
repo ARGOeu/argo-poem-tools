@@ -1,10 +1,10 @@
-#!/usr/bin/python
-import ConfigParser
+#!/usr/bin/python3
 import argparse
+import configparser
 import logging
+import logging.handlers
 import subprocess
 import sys
-import logging.handlers
 
 import requests
 from argo_poem_tools.config import Config
@@ -94,7 +94,7 @@ def main():
 
                 if not noop:
                     if missing_packages_msg:
-                        print 'WARNING: ' + missing_packages_msg
+                        print('WARNING: ' + missing_packages_msg)
                     logger.info('ok!')
                 sys.exit(0)
 
@@ -106,15 +106,15 @@ def main():
         logger.error(err)
         sys.exit(2)
 
-    except ConfigParser.ParsingError as err:
+    except configparser.ParsingError as err:
         logger.error(err)
         sys.exit(2)
 
-    except ConfigParser.NoSectionError as err:
+    except configparser.NoSectionError as err:
         logger.error(err)
         sys.exit(2)
 
-    except ConfigParser.NoOptionError as err:
+    except configparser.NoOptionError as err:
         logger.error(err)
         sys.exit(2)
 

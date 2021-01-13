@@ -1,4 +1,4 @@
-import ConfigParser
+import configparser
 
 conf = '/etc/argo-poem-tools/argo-poem-tools.conf'
 
@@ -8,7 +8,7 @@ class Config:
         self.conf = conf
 
     def read(self):
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.read(self.conf)
         return config
 
