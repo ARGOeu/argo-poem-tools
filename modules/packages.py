@@ -82,7 +82,9 @@ class Packages:
 
     @staticmethod
     def _get_available_packages():
-        output = subprocess.check_output(['yum', 'list', 'available'])
+        output = subprocess.check_output(
+            ['yum', 'list', 'available', '--showduplicates']
+        )
         output_list = output.decode('utf-8').split('\n')
         pkg_index = output_list.index('Available Packages') + 1
         pkgs = output_list[pkg_index:]
