@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-import ConfigParser
+import configparser
 import os
 import unittest
 
@@ -56,7 +55,7 @@ class ConfigTests(unittest.TestCase):
         config = Config()
         config.conf = mock_file_name
         self.assertRaises(
-            ConfigParser.NoSectionError,
+            configparser.NoSectionError,
             config.get_hostname
         )
 
@@ -68,7 +67,7 @@ class ConfigTests(unittest.TestCase):
         config.conf = mock_file_name
 
         self.assertRaises(
-            ConfigParser.NoOptionError,
+            configparser.NoOptionError,
             config.get_hostname
         )
 
@@ -88,7 +87,7 @@ class ConfigTests(unittest.TestCase):
         config.conf = mock_file_name
 
         self.assertRaises(
-            ConfigParser.NoSectionError,
+            configparser.NoSectionError,
             config.get_token
         )
 
@@ -100,7 +99,7 @@ class ConfigTests(unittest.TestCase):
         config.conf = mock_file_name
 
         self.assertRaises(
-            ConfigParser.NoOptionError,
+            configparser.NoOptionError,
             config.get_token
         )
 
@@ -122,7 +121,7 @@ class ConfigTests(unittest.TestCase):
         config = Config()
         config.conf = mock_file_name
         self.assertRaises(
-            ConfigParser.NoSectionError,
+            configparser.NoSectionError,
             config.get_profiles
         )
 
@@ -133,7 +132,7 @@ class ConfigTests(unittest.TestCase):
         config = Config()
         config.conf = mock_file_name
         self.assertRaises(
-            ConfigParser.NoOptionError,
+            configparser.NoOptionError,
             config.get_profiles
         )
 
