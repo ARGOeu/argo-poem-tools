@@ -5,7 +5,7 @@
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
 Version:       0.2.0
-Release:       1%{?dist}
+Release:       2%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
 Group:         Development/System
@@ -44,7 +44,9 @@ rm -rf $RPM_BUILD_ROOT
 %{python3_sitelib}/%{underscore %{name}}/*.py
 
 %changelog
-* Wed Jan 13 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.0-2%{?dist}
+* Mon Feb 1 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.0-2%{?dist}
+- ARGO-2858 argo-poem-tools wrongly marking packages as not available
+* Wed Jan 13 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.0-1%{?dist}
 - ARGO-2564 Switch argo-poem-tools to Py3
 * Mon Dec 7 2020 Katarina Zailac <kzailac@srce.hr> - 0.1.5-1%{?dist}
 - ARGO-2565 Use SysLogHandler instead of FileHandler in argo-poem-tools
