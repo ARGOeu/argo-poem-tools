@@ -110,6 +110,18 @@ class Packages:
 
         return pkgs_dicts
 
+    def _get_locked_versions(self):
+        """
+        Get list of packages with locked versions among the packages requested.
+        """
+        output = subprocess.check_output(['yum', 'versionlock', 'list']).decode(
+            'utf-8'
+        )
+        locked_versions = [
+            item[0] for item in self._list() if item[0] in output
+        ]
+        return locked_versions
+
     def _get_exceptions(self):
         """
         Go through packages available from YUM repo, and determine which one of

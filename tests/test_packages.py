@@ -88,6 +88,14 @@ nagios-plugins-http-2.3.3-2.el7.x86_64
 
 """.encode('utf-8')
 
+mock_yum_versionlock_list = \
+"""
+Loaded plugins: fastestmirror, ovl, versionlock
+0:nagios-plugins-argo-0.1.12-20200811040245.d758e91.el7.*
+0:nagios-plugins-fedcloud-0.5.2-20201217023205.1b502c8.el7.*
+versionlock list done
+""".encode('utf-8')
+
 
 def mock_func(*args, **kwargs):
     pass
@@ -181,6 +189,14 @@ class PackageTests(unittest.TestCase):
                 dict(name='NetworkManager-dispatcher-routing-rules',
                      version='1:1.18.4', release='3.el7')
             ]
+        )
+
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_get_locked_versions(self, mock_versionlock):
+        mock_versionlock.return_value = mock_yum_versionlock_list
+        self.assertEqual(
+            sorted(self.pkgs._get_locked_versions()),
+            ['nagios-plugins-argo', 'nagios-plugins-fedcloud']
         )
 
     @mock.patch('argo_poem_tools.packages.Packages._get_available_packages')
