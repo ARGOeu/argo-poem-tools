@@ -285,8 +285,6 @@ class Packages:
         not_upgraded = []
         downgraded = []
         not_downgraded = []
-        installed_diff_ver = []
-        not_installed_diff_ver = []
         if install:
             for pkg in install:
                 try:
@@ -318,15 +316,6 @@ class Packages:
                 except subprocess.CalledProcessError:
                     not_downgraded.append(pkg[0])
 
-        if diff_ver:
-            for pkg in diff_ver:
-                try:
-                    subprocess.check_call(['yum', '-y', 'install', pkg[1]])
-                    installed_diff_ver.append(' -> '.join(pkg))
-
-                except subprocess.CalledProcessError:
-                    not_installed_diff_ver.append(pkg[0])
-
         info_msg = []
         warn_msg = []
         if installed:
@@ -338,10 +327,10 @@ class Packages:
         if downgraded:
             info_msg.append('Packages downgraded: ' + '; '.join(downgraded))
 
-        if installed_diff_ver:
-            info_msg.append(
-                'Packages installed with different version: ' + '; '.join(
-                    installed_diff_ver
+        if diff_ver:
+            warn_msg.append(
+                'Packages not found with requested version: ' + '; '.join(
+                    diff_ver
                 )
             )
 
@@ -358,11 +347,6 @@ class Packages:
         if not_downgraded:
             warn_msg.append(
                 'Packages not downgraded: ' + '; '.join(not_downgraded)
-            )
-
-        if not_installed_diff_ver:
-            warn_msg.append(
-                'Packages not installed: ' + '; '.join(not_installed_diff_ver)
             )
 
         if not_found:
