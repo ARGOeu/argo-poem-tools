@@ -308,10 +308,7 @@ class PackageTests(unittest.TestCase):
             downgrade,
             [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
         )
-        self.assertEqual(
-            diff_ver,
-            [('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')]
-        )
+        self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, ['nagios-plugins-argo-0.1.12'])
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
@@ -351,7 +348,7 @@ class PackageTests(unittest.TestCase):
             downgrade,
             [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
         )
-        self.assertEqual(diff_ver, [])
+        self.assertEqual(diff_ver, ['nagios-plugins-fedcloud-0.5.0'])
         self.assertEqual(not_found, [])
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
@@ -394,11 +391,7 @@ class PackageTests(unittest.TestCase):
             downgrade,
             [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
         )
-        self.assertEqual(
-            diff_ver, [
-                ('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')
-            ]
-        )
+        self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, [])
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')

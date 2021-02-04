@@ -266,32 +266,7 @@ class Packages:
             orig_item = self.package_list[
                 [p[0] for p in self.package_list].index(item[0])
             ]
-            if item[0] in installed_names:
-                installed_ver = installed_packages[
-                    installed_names.index(item[0])
-                ][1]
-                installed_release = installed_packages[
-                    installed_names.index(item[0])
-                ][2]
-
-                available_items = [
-                    pkg for pkg in self.available_packages if
-                    item[0] == pkg[0]
-                ]
-                max_version = self._get_max_version(available_items)
-
-                if _compare_vr(
-                        (max_version[1], max_version[2]),
-                        (installed_ver, installed_release)
-                ) > 0:
-                    diff_ver.append(
-                        ('-'.join(orig_item), '{}-{}'.format(
-                            item[0], max_version[1])
-                         )
-                    )
-
-            else:
-                diff_ver.append(('-'.join(orig_item), '-'.join(item[0:2])))
+            diff_ver.append('-'.join(orig_item))
 
         not_found = []
         for item in self.packages_not_found:
