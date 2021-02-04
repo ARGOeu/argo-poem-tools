@@ -579,7 +579,7 @@ class PackageTests(unittest.TestCase):
             [('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
              ('nagios-plugins-http',)],
             [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
-            [('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')],
+            ['nagios-plugins-globus-0.1.5'],
             []
         )
         info, warn = self.pkgs.no_op()
@@ -593,11 +593,15 @@ class PackageTests(unittest.TestCase):
                 '0.5.0; nagios-plugins-http',
                 'Packages to be downgraded: '
                 'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
-                'Packages to be installed with different version: '
-                'nagios-plugins-globus-0.1.5 -> nagios-plugins-globus-0.1.6'
             ]
         )
-        self.assertEqual(warn, [])
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found with requested version: '
+                'nagios-plugins-globus-0.1.5'
+            ]
+        )
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
@@ -606,8 +610,7 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-igtf-1.4.0'],
             [],
             [],
-            [('nagios-plugins-fedcloud-0.5.0',
-              'nagios-plugins-fedcloud-0.6.0')],
+            ['nagios-plugins-fedcloud-0.5.0'],
             ['nagios-plugins-globus-0.1.5', 'nagios-plugins-argo-0.1.12',
              'nagios-plugins-http']
         )
@@ -616,14 +619,14 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(
             info,
             [
-                'Packages to be installed: nagios-plugins-igtf-1.4.0',
-                'Packages to be installed with different version: '
-                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.6.0'
+                'Packages to be installed: nagios-plugins-igtf-1.4.0'
             ]
         )
         self.assertEqual(
             warn,
             [
+                'Packages not found with requested version: '
+                'nagios-plugins-fedcloud-0.5.0',
                 'Packages not found: '
                 'nagios-plugins-globus-0.1.5; nagios-plugins-argo-0.1.12; '
                 'nagios-plugins-http'
@@ -639,8 +642,7 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-http'],
             [('nagios-plugins-argo-0.1.12',)],
             [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
-            [('nagios-plugins-fedcloud-0.5.0',
-              'nagios-plugins-fedcloud-0.4.0')],
+            ['nagios-plugins-fedcloud-0.5.0'],
             []
         )
         info, warn = self.pkgs.no_op()
@@ -651,9 +653,13 @@ class PackageTests(unittest.TestCase):
                 'Packages to be installed: nagios-plugins-http',
                 'Packages to be upgraded: nagios-plugins-argo-0.1.12',
                 'Packages to be downgraded: '
-                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
-                'Packages to be installed with different version: '
-                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.4.0'
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0'
             ]
         )
-        self.assertEqual(warn, [])
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found with requested version: '
+                'nagios-plugins-fedcloud-0.5.0'
+            ]
+        )

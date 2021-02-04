@@ -357,7 +357,7 @@ class Packages:
         return info_msg, warn_msg
 
     def no_op(self):
-        install, upgrade0, downgrade0, diff_ver0, not_found = self._get()
+        install, upgrade0, downgrade0, diff_ver, not_found = self._get()
         info_msg = []
         warn_msg = []
 
@@ -387,13 +387,9 @@ class Packages:
                 'Packages to be downgraded: ' + '; '.join(downgrade)
             )
 
-        if diff_ver0:
-            diff_ver = []
-            for item in diff_ver0:
-                diff_ver.append(' -> '.join(item))
-
-            info_msg.append(
-                'Packages to be installed with different version: ' + '; '.join(
+        if diff_ver:
+            warn_msg.append(
+                'Packages not found with requested version: ' + '; '.join(
                     diff_ver
                 )
             )
