@@ -401,16 +401,22 @@ class Packages:
 
         if install:
             info_msg.append(
-                'Packages to be installed: ' + '; '.join(install)
+                'Packages to be installed: ' + '; '.join(
+                    ['-'.join(item) for item in install]
+                )
             )
 
         if upgrade0:
             upgrade = []
             for item in upgrade0:
                 if len(item) > 1:
-                    upgrade.append(' -> '.join(item))
+                    upgrade.append(
+                        '{} -> {}'.format(
+                            '-'.join(item[0]), '-'.join(item[1])
+                        )
+                    )
                 else:
-                    upgrade.append(item[0])
+                    upgrade.append('-'.join(item[0]))
 
             info_msg.append(
                 'Packages to be upgraded: ' + '; '.join(upgrade)
@@ -419,7 +425,11 @@ class Packages:
         if downgrade0:
             downgrade = []
             for item in downgrade0:
-                downgrade.append(' -> '.join(item))
+                downgrade.append(
+                    '{} -> {}'.format(
+                        '-'.join(item[0]), '-'.join(item[1])
+                    )
+                )
 
             info_msg.append(
                 'Packages to be downgraded: ' + '; '.join(downgrade)

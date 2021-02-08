@@ -637,11 +637,20 @@ class PackageTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_run(self, mock_get, mock_sp):
         mock_get.return_value = (
-            ['nagios-plugins-http'],
-            [('nagios-plugins-fedcloud-0.4.0',
-              'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-argo-0.1.12',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
+            [('nagios-plugins-http', )],
+            [
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0'),
+                ),
+                (('nagios-plugins-argo', '0.1.12'),)
+            ],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
             [],
             []
         )
@@ -667,10 +676,20 @@ class PackageTests(unittest.TestCase):
             self, mock_get, mock_sp
     ):
         mock_get.return_value = (
-            ['nagios-plugins-argo-0.1.12'],
-            [('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-http',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
+            [('nagios-plugins-argo', '0.1.12')],
+            [
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0'),
+                ),
+                (('nagios-plugins-http', ),)
+            ],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
             ['nagios-plugins-globus-0.1.5'],
             []
         )
@@ -699,7 +718,7 @@ class PackageTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_if_packages_not_found(self, mock_get, mock_sp):
         mock_get.return_value = (
-            ['nagios-plugins-igtf-1.4.0'],
+            [('nagios-plugins-igtf', '1.4.0')],
             [],
             [],
             ['nagios-plugins-fedcloud-0.5.0'],
@@ -731,9 +750,14 @@ class PackageTests(unittest.TestCase):
             self, mock_get, mock_sp
     ):
         mock_get.return_value = (
-            ['nagios-plugins-http'],
-            [('nagios-plugins-argo-0.1.12',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
+            [('nagios-plugins-http', )],
+            [(('nagios-plugins-argo', '0.1.12'), )],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
             ['nagios-plugins-fedcloud-0.5.0'],
             []
         )
