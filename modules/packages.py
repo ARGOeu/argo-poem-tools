@@ -308,34 +308,51 @@ class Packages:
         not_downgraded = []
         if install:
             for pkg in install:
+                if len(pkg) == 2:
+                    pkgi = '-'.join(pkg)
+                else:
+                    pkgi = pkg[0]
+
                 try:
-                    subprocess.check_call(['yum', '-y', 'install', pkg])
-                    installed.append(pkg)
+                    subprocess.check_call(['yum', '-y', 'install', pkgi])
+                    installed.append(pkgi)
 
                 except subprocess.CalledProcessError:
-                    not_installed.append(pkg)
+                    not_installed.append(pkgi)
 
         if upgrade:
             for pkg in upgrade:
                 try:
                     if len(pkg) == 2:
-                        subprocess.check_call(['yum', '-y', 'install', pkg[1]])
-                        upgraded.append(' -> '.join(pkg))
+                        subprocess.check_call(
+                            ['yum', '-y', 'install', '-'.join(pkg[1])]
+                        )
+                        upgraded.append(
+                            '{} -> {}'.format(
+                                '-'.join(pkg[0]), '-'.join(pkg[1])
+                            )
+                        )
                     else:
-                        subprocess.check_call(['yum', '-y', 'install', pkg[0]])
-                        upgraded.append(pkg[0])
+                        subprocess.check_call(
+                            ['yum', '-y', 'install', '-'.join(pkg[0])]
+                        )
+                        upgraded.append('-'.join(pkg[0]))
 
                 except subprocess.CalledProcessError:
-                    not_upgraded.append(pkg[0])
+                    not_upgraded.append('-'.join(pkg[0]))
 
         if downgrade:
             for pkg in downgrade:
                 try:
-                    subprocess.check_call(['yum', '-y', 'downgrade', pkg[1]])
-                    downgraded.append(' -> '.join(pkg))
+                    subprocess.check_call(
+                        ['yum', '-y', 'downgrade', '-'.join(pkg[1])]
+                    )
+                    downgraded.append(
+                        '{} -> {}'.format('-'.join(pkg[0]), '-'.join(pkg[1]))
+                    )
 
                 except subprocess.CalledProcessError:
-                    not_downgraded.append(pkg[0])
+                    not_downgraded.append('-'.join(pkg[0]))
 
         info_msg = []
         warn_msg = []
