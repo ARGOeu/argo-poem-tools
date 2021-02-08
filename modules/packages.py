@@ -65,6 +65,7 @@ class Packages:
     def __init__(self, data):
         self.data = data
         self.package_list = self._list()
+        self.versions_unlocked = False
         self.packages_different_version = None
         self.packages_not_found = None
         self.available_packages = None
@@ -80,8 +81,31 @@ class Packages:
 
         return list_packages
 
-    @staticmethod
-    def _get_available_packages():
+    def _get_locked_versions(self):
+        """
+        Get list of packages with locked versions among the packages requested.
+        """
+        output = subprocess.check_output(['yum', 'versionlock', 'list']).decode(
+            'utf-8'
+        )
+        locked_versions = [
+            item[0] for item in self._list() if item[0] in output
+        ]
+        return locked_versions
+
+    def _unlock_versions(self):
+        for item in self._get_locked_versions():
+            try:
+                subprocess.check_call(['yum', 'versionlock', 'delete', item])
+            except subprocess.CalledProcessError:
+                continue
+
+        self.versions_unlocked = True
+
+    def _get_available_packages(self):
+        if not self.versions_unlocked:
+            self._unlock_versions()
+
         output = subprocess.check_output(
             ['yum', 'list', 'available', '--showduplicates']
         )
@@ -109,18 +133,6 @@ class Packages:
             )
 
         return pkgs_dicts
-
-    def _get_locked_versions(self):
-        """
-        Get list of packages with locked versions among the packages requested.
-        """
-        output = subprocess.check_output(['yum', 'versionlock', 'list']).decode(
-            'utf-8'
-        )
-        locked_versions = [
-            item[0] for item in self._list() if item[0] in output
-        ]
-        return locked_versions
 
     def _get_exceptions(self):
         """

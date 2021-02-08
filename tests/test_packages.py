@@ -169,6 +169,7 @@ class PackageTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')
     def test_get_available_packages(self, mock_yumdb):
+        self.pkgs.versions_unlocked = True
         mock_yumdb.return_value = mock_yum_list_available
         self.assertEqual(
             self.pkgs._get_available_packages(),
@@ -199,6 +200,22 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-argo', 'nagios-plugins-fedcloud']
         )
 
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    def test_unlock_versions(self, mock_call, mock_versionlock):
+        mock_call.side_effect = mock_func
+        mock_versionlock.return_value = mock_yum_versionlock_list
+        self.pkgs._unlock_versions()
+        self.assertEqual(mock_call.call_count, 2)
+        mock_call.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'delete', 'nagios-plugins-argo']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'delete', 'nagios-plugins-fedcloud']
+            )
+        ], any_order=True)
+
     @mock.patch('argo_poem_tools.packages.Packages._get_available_packages')
     def test_get_exceptions(self, mock_yumdb):
         mock_yumdb.return_value = [
@@ -207,6 +224,7 @@ class PackageTests(unittest.TestCase):
             dict(name='nagios-plugins-igtf', version='1.4.0', release='3.el7'),
             dict(name='nagios-plugins-http', version='2.3.3', release='1.el7')
         ]
+        self.pkgs.versions_unlocked = True
         self.pkgs._get_exceptions()
         self.assertEqual(
             self.pkgs.packages_different_version,
