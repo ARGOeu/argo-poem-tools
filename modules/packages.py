@@ -255,14 +255,14 @@ class Packages:
 
                 if len(item) > 1:
                     if item[1] == installed_ver:
-                        change_tuple = ('-'.join(item),)
+                        change_tuple = (item,)
                     else:
                         change_tuple = (
-                            item[0] + '-' + installed_ver, '-'.join(item)
+                            (item[0], installed_ver), item
                         )
 
                 else:
-                    change_tuple = item
+                    change_tuple = (item,)
 
                 if _compare_vr(
                         (max_version[1], max_version[2]),
@@ -280,10 +280,7 @@ class Packages:
                     continue
 
             else:
-                if len(item) == 2:
-                    install.append('-'.join(item))
-                else:
-                    install.append(item[0])
+                install.append(item)
 
         diff_ver = []
         for item in self.packages_different_version:

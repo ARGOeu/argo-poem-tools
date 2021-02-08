@@ -291,19 +291,28 @@ class PackageTests(unittest.TestCase):
         ]
         install, upgrade, downgrade, diff_ver, not_found = self.pkgs._get()
         self.assertEqual(
-            install, ['nagios-plugins-http']
+            install, [('nagios-plugins-http',)]
         )
         self.assertEqual(
             set(upgrade),
             {
-                ('nagios-plugins-fedcloud-0.4.0',
-                 'nagios-plugins-fedcloud-0.5.0'),
-                ('nagios-plugins-argo-0.1.12',)
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0')
+                ),
+                (
+                    ('nagios-plugins-argo', '0.1.12'),
+                )
             }
         )
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
         self.assertEqual(diff_ver, [])
         self.assertEqual(not_found, [])
@@ -334,13 +343,25 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(install, [])
         self.assertEqual(
             set(upgrade),
-            {('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-http',)}
+            {
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0')
+                ),
+                (
+                    ('nagios-plugins-http',),
+                )
+            }
 
         )
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
         self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, ['nagios-plugins-argo-0.1.12'])
@@ -376,11 +397,16 @@ class PackageTests(unittest.TestCase):
         ]
         install, upgrade, downgrade, diff_ver, not_found = self.pkgs._get()
         self.assertFalse(mock_sp.called)
-        self.assertEqual(install, ['nagios-plugins-http'])
-        self.assertEqual(upgrade, [('nagios-plugins-argo-0.1.12', )])
+        self.assertEqual(install, [('nagios-plugins-http',)])
+        self.assertEqual(upgrade, [(('nagios-plugins-argo', '0.1.12'),)])
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
         self.assertEqual(diff_ver, ['nagios-plugins-fedcloud-0.5.0'])
         self.assertEqual(not_found, [])
@@ -412,18 +438,25 @@ class PackageTests(unittest.TestCase):
         ]
         install, upgrade, downgrade, diff_ver, not_found = self.pkgs._get()
         self.assertFalse(mock_sp.called)
-        self.assertEqual(install, ['nagios-plugins-argo-0.1.12'])
+        self.assertEqual(install, [('nagios-plugins-argo', '0.1.12')])
         self.assertEqual(
             set(upgrade),
             {
-                ('nagios-plugins-fedcloud-0.4.0',
-                 'nagios-plugins-fedcloud-0.5.0'),
-                ('nagios-plugins-http',)
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0')
+                ),
+                (('nagios-plugins-http',),)
             }
         )
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
         self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, [])
