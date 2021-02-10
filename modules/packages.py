@@ -306,6 +306,7 @@ class Packages:
         not_upgraded = []
         downgraded = []
         not_downgraded = []
+        not_locked = []
         if install:
             for pkg in install:
                 if len(pkg) == 2:
@@ -316,6 +317,15 @@ class Packages:
                 try:
                     subprocess.check_call(['yum', '-y', 'install', pkgi])
                     installed.append(pkgi)
+
+                    if len(pkg) == 2:
+                        try:
+                            subprocess.check_call(
+                                ['yum', 'versionlock', 'add', pkgi]
+                            )
+
+                        except subprocess.CalledProcessError:
+                            not_locked.append(pkgi)
 
                 except subprocess.CalledProcessError:
                     not_installed.append(pkgi)
@@ -332,11 +342,30 @@ class Packages:
                                 '-'.join(pkg[0]), '-'.join(pkg[1])
                             )
                         )
+
+                        try:
+                            subprocess.check_call(
+                                ['yum', 'versionlock', 'add', '-'.join(pkg[1])]
+                            )
+
+                        except subprocess.CalledProcessError:
+                            not_locked.append('-'.join(pkg[1]))
+
                     else:
                         subprocess.check_call(
                             ['yum', '-y', 'install', '-'.join(pkg[0])]
                         )
                         upgraded.append('-'.join(pkg[0]))
+
+                        if len(pkg[0]) == 2:
+                            try:
+                                subprocess.check_call(
+                                    ['yum', 'versionlock', 'add',
+                                     '-'.join(pkg[0])]
+                                )
+
+                            except subprocess.CalledProcessError:
+                                not_locked.append('-'.join(pkg[0]))
 
                 except subprocess.CalledProcessError:
                     not_upgraded.append('-'.join(pkg[0]))
@@ -350,6 +379,14 @@ class Packages:
                     downgraded.append(
                         '{} -> {}'.format('-'.join(pkg[0]), '-'.join(pkg[1]))
                     )
+
+                    try:
+                        subprocess.check_call(
+                            ['yum', 'versionlock', 'add', '-'.join(pkg[1])]
+                        )
+
+                    except subprocess.CalledProcessError:
+                        not_locked.append('-'.join(pkg[1]))
 
                 except subprocess.CalledProcessError:
                     not_downgraded.append('-'.join(pkg[0]))
@@ -385,6 +422,11 @@ class Packages:
         if not_downgraded:
             warn_msg.append(
                 'Packages not downgraded: ' + '; '.join(not_downgraded)
+            )
+
+        if not_locked:
+            warn_msg.append(
+                'Packages not locked: ' + '; '.join(not_locked)
             )
 
         if not_found:

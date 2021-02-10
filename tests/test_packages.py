@@ -484,14 +484,23 @@ class PackageTests(unittest.TestCase):
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 4)
+        self.assertEqual(mock_sp.call_count, 7)
         mock_sp.assert_has_calls([
             mock.call(
                 ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
             ),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+            )
         ], any_order=True)
         self.assertEqual(
             info,
@@ -531,14 +540,23 @@ class PackageTests(unittest.TestCase):
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 4)
+        self.assertEqual(mock_sp.call_count, 7)
         mock_sp.assert_has_calls([
             mock.call(
                 ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
             ),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+            )
         ], any_order=True)
         self.assertEqual(
             info,
@@ -573,9 +591,12 @@ class PackageTests(unittest.TestCase):
              'nagios-plugins-http']
         )
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 1)
+        self.assertEqual(mock_sp.call_count, 2)
         mock_sp.assert_has_calls([
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0'])
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0']),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            )
         ], any_order=True)
         self.assertEqual(
             info, ['Packages installed: nagios-plugins-igtf-1.4.0']
@@ -610,11 +631,17 @@ class PackageTests(unittest.TestCase):
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 3)
+        self.assertEqual(mock_sp.call_count, 5)
         mock_sp.assert_has_calls([
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+            )
         ], any_order=True)
         self.assertEqual(
             info,
