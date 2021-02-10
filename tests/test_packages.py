@@ -96,6 +96,12 @@ Loaded plugins: fastestmirror, ovl, versionlock
 versionlock list done
 """.encode('utf-8')
 
+mock_empty_versionlock_list = \
+"""
+Loaded plugins: fastestmirror, ovl, versionlock
+versionlock list done
+""".encode('utf-8')
+
 
 def mock_func(*args, **kwargs):
     pass
@@ -192,11 +198,40 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
+    @mock.patch('argo_poem_tools.packages.Packages._unlock_versions')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_get_available_packages_if_versions_locked(
+            self, mock_yumdb, mock_unlock
+    ):
+        mock_yumdb.return_value = mock_yum_list_available
+        self.assertEqual(
+            self.pkgs._get_available_packages(),
+            [
+                dict(name='nagios', version='4.4.5', release='7.el7'),
+                dict(name='nagios-contrib', version='4.4.5', release='7.el7'),
+                dict(name='nagios-devel', version='4.4.5', release='7.el7'),
+                dict(name='nagios-plugin-grnet-agora', version='0.3',
+                     release='20200731072952.4427855.el7'),
+                dict(name='nagios-plugins-activemq', version='1.0.0',
+                     release='20170401112243.00c5f1d.el7'),
+                dict(name='nagios-plugins-disk_smb', version='2.3.3',
+                     release='2.el7'),
+                dict(name='nagios-plugins-globus', version='0.1.5',
+                     release='20200713050450.eb1e7d8.el7'),
+                dict(name='nagios-plugins-gocdb', version='1.0.0',
+                     release='20200713050609.a481696.el7'),
+                dict(name='NetworkManager-dispatcher-routing-rules',
+                     version='1:1.18.4', release='3.el7')
+            ]
+        )
+        self.assertEqual(mock_unlock.call_count, 1)
+
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')
     def test_get_locked_versions(self, mock_versionlock):
         mock_versionlock.return_value = mock_yum_versionlock_list
+        self.pkgs._get_locked_versions()
         self.assertEqual(
-            sorted(self.pkgs._get_locked_versions()),
+            sorted(self.pkgs.locked_versions),
             ['nagios-plugins-argo', 'nagios-plugins-fedcloud']
         )
 
@@ -216,6 +251,14 @@ class PackageTests(unittest.TestCase):
             )
         ], any_order=True)
 
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    def test_unlock_versions_if_none_locked(self, mock_call, mock_versionlock):
+        mock_call.side_effect = mock_func
+        mock_versionlock.return_value = mock_empty_versionlock_list
+        self.pkgs._unlock_versions()
+        self.assertEqual(mock_call.call_count, 0)
+
     @mock.patch('argo_poem_tools.packages.Packages._get_available_packages')
     def test_get_exceptions(self, mock_yumdb):
         mock_yumdb.return_value = [
@@ -224,7 +267,6 @@ class PackageTests(unittest.TestCase):
             dict(name='nagios-plugins-igtf', version='1.4.0', release='3.el7'),
             dict(name='nagios-plugins-http', version='2.3.3', release='1.el7')
         ]
-        self.pkgs.versions_unlocked = True
         self.pkgs._get_exceptions()
         self.assertEqual(
             self.pkgs.packages_different_version,
@@ -663,6 +705,10 @@ class PackageTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_run(self, mock_get, mock_sp):
+        self.pkgs.versions_unlocked = True
+        self.pkgs.locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-igtf'
+        ]
         mock_get.return_value = (
             [('nagios-plugins-http', )],
             [
@@ -683,7 +729,15 @@ class PackageTests(unittest.TestCase):
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.no_op()
-        self.assertFalse(mock_sp.called)
+        self.assertEqual(mock_sp.call_count, 2)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf']
+            )
+        ])
         self.assertEqual(
             info,
             [
@@ -702,6 +756,8 @@ class PackageTests(unittest.TestCase):
     def test_no_op_if_installed_and_wrong_version_available(
             self, mock_get, mock_sp
     ):
+        self.pkgs.versions_unlocked = True
+        self.pkgs.locked_versions = ['nagios-plugins-fedcloud']
         mock_get.return_value = (
             [('nagios-plugins-argo', '0.1.12')],
             [
@@ -721,7 +777,12 @@ class PackageTests(unittest.TestCase):
             []
         )
         info, warn = self.pkgs.no_op()
-        self.assertFalse(mock_sp.called)
+        self.assertEqual(mock_sp.call_count, 1)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud']
+            )
+        ])
         self.assertEqual(
             info,
             [

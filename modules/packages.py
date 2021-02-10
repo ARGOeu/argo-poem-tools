@@ -66,6 +66,7 @@ class Packages:
         self.data = data
         self.package_list = self._list()
         self.versions_unlocked = False
+        self.locked_versions = []
         self.packages_different_version = None
         self.packages_not_found = None
         self.available_packages = None
@@ -91,16 +92,22 @@ class Packages:
         locked_versions = [
             item[0] for item in self._list() if item[0] in output
         ]
-        return locked_versions
+        self.locked_versions = locked_versions
 
     def _unlock_versions(self):
-        for item in self._get_locked_versions():
-            try:
-                subprocess.check_call(['yum', 'versionlock', 'delete', item])
-            except subprocess.CalledProcessError:
-                continue
+        if len(self.locked_versions) == 0:
+            self._get_locked_versions()
 
-        self.versions_unlocked = True
+        if len(self.locked_versions) > 0:
+            for item in self.locked_versions:
+                try:
+                    subprocess.check_call(
+                        ['yum', 'versionlock', 'delete', item]
+                    )
+                except subprocess.CalledProcessError:
+                    continue
+
+            self.versions_unlocked = True
 
     def _get_available_packages(self):
         if not self.versions_unlocked:
@@ -438,6 +445,13 @@ class Packages:
 
     def no_op(self):
         install, upgrade0, downgrade0, diff_ver, not_found = self._get()
+
+        if self.versions_unlocked:
+            for pkg in self.locked_versions:
+                subprocess.check_call(
+                    ['yum', 'versionlock', 'add', pkg]
+                )
+
         info_msg = []
         warn_msg = []
 
