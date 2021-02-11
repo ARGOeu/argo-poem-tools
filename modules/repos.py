@@ -6,13 +6,17 @@ import requests
 
 
 class YUMRepos:
-    def __init__(self, hostname, token, profiles, override=True):
+    def __init__(
+            self, hostname, token, profiles, repos_path='/etc/yum.repos.d',
+            override=True
+    ):
         self.hostname = hostname
         self.token = token
         self.profiles = profiles
+        self.path = repos_path
+        self.override = override
         self.data = None
         self.missing_packages = None
-        self.override = override
 
     def get_data(self):
         headers = {
@@ -36,14 +40,14 @@ class YUMRepos:
 
             raise requests.exceptions.RequestException(msg)
 
-    def create_file(self, path='/etc/yum.repos.d'):
+    def create_file(self):
         if not self.data:
             self.get_data()
 
         files = []
         for key, value in self.data.items():
             title = key
-            filename = os.path.join(path, title + '.repo')
+            filename = os.path.join(self.path, title + '.repo')
             content = value['content']
 
             files.append(filename)
@@ -55,6 +59,18 @@ class YUMRepos:
                 f.write(content)
 
         return sorted(files)
+
+    def clean(self):
+        if not self.override:
+            tmp_dir = os.path.join('/tmp', self.path)
+            if os.path.isdir(tmp_dir):
+                src_files = os.listdir(tmp_dir)
+                for file in src_files:
+                    full_filename = os.path.join(tmp_dir, file)
+                    if os.path.isfile(full_filename):
+                        shutil.copy(full_filename, self.path)
+
+                os.rmdir(tmp_dir)
 
     @classmethod
     def _get_centos_version(cls):

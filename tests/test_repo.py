@@ -115,27 +115,32 @@ class YUMReposTests(unittest.TestCase):
         self.repos1 = YUMRepos(
             hostname='mock.url.com',
             token='some-token-1234',
-            profiles=['TEST_PROFILE1', 'TEST_PROFILE2']
+            profiles=['TEST_PROFILE1', 'TEST_PROFILE2'],
+            repos_path=os.getcwd()
         )
         self.repos2 = YUMRepos(
             hostname='http://mock.url.com/',
             token='some-token-1234',
-            profiles=['TEST_PROFILE1']
+            profiles=['TEST_PROFILE1'],
+            repos_path=os.getcwd()
         )
         self.repos3 = YUMRepos(
             hostname='https://mock.url.com/',
             token='some-token-1234',
-            profiles=['TEST_PROFILE1', 'TEST_PROFILE2']
+            profiles=['TEST_PROFILE1', 'TEST_PROFILE2'],
+            repos_path=os.getcwd()
         )
         self.repos4 = YUMRepos(
             hostname='mock.url.com',
             token='some-token-1234',
-            profiles=''
+            profiles='',
+            repos_path=os.getcwd()
         )
         self.repos5 = YUMRepos(
             hostname='mock.url.com',
             token='some-token-1234',
             profiles=['TEST_PROFILE1', 'TEST_PROFILE2'],
+            repos_path=os.getcwd(),
             override=False
         )
 
@@ -277,7 +282,7 @@ class YUMReposTests(unittest.TestCase):
         mock_request.side_effect = mock_request_ok
         mock_sp.return_value = \
             'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
-        files = self.repos1.create_file(path=os.getcwd())
+        files = self.repos1.create_file()
         mock_request.assert_called_once_with(
             'https://mock.url.com/api/v2/repos/centos7',
             headers={'x-api-key': 'some-token-1234',
@@ -323,7 +328,7 @@ class YUMReposTests(unittest.TestCase):
         with open('argo-devel.repo', 'w') as f:
             f.write('test')
 
-        files = self.repos1.create_file(os.getcwd())
+        files = self.repos1.create_file()
         mock_request.assert_called_once_with(
             'https://mock.url.com/api/v2/repos/centos7',
             headers={'x-api-key': 'some-token-1234',
@@ -370,7 +375,7 @@ class YUMReposTests(unittest.TestCase):
         with open('argo-devel.repo', 'w') as f:
             f.write('test')
 
-        files = self.repos5.create_file(os.getcwd())
+        files = self.repos5.create_file()
         mock_request.assert_called_once_with(
             'https://mock.url.com/api/v2/repos/centos7',
             headers={'x-api-key': 'some-token-1234',
@@ -407,3 +412,41 @@ class YUMReposTests(unittest.TestCase):
                 'nagios-plugins-egi-notebooks (0.2.3)'
             ]
         )
+
+    @mock.patch('argo_poem_tools.repos.os.rmdir')
+    @mock.patch('argo_poem_tools.repos.shutil.copy')
+    @mock.patch('argo_poem_tools.repos.os.path.isfile')
+    @mock.patch('argo_poem_tools.repos.os.listdir')
+    @mock.patch('argo_poem_tools.repos.os.path.isdir')
+    def test_clean(self, mock_isdir, mock_ls, mock_isfile, mock_cp, mock_rm):
+        mock_isdir.return_value = True
+        mock_ls.return_value = [
+            'argo-devel.repo', 'nordugrid-updates.repo'
+        ]
+        mock_isfile.return_value = True
+        file1 = os.path.join(os.getcwd(), 'argo-devel.repo')
+        file2 = os.path.join(os.getcwd(), 'nordugrid-updates.repo')
+        self.repos5.clean()
+        self.assertEqual(mock_isdir.call_count, 1)
+        mock_isdir.assert_called_with(os.path.join('/tmp', os.getcwd()))
+        self.assertEqual(mock_ls.call_count, 1)
+        mock_ls.assert_called_with(os.path.join('/tmp', os.getcwd()))
+        self.assertEqual(mock_isfile.call_count, 2)
+        mock_isfile.assert_has_calls([
+            mock.call(os.path.join('/tmp', file1)),
+            mock.call(os.path.join('/tmp', file2))
+        ], any_order=True)
+        self.assertEqual(mock_cp.call_count, 2)
+        mock_cp.assert_has_calls([
+            mock.call(os.path.join('/tmp', file1), os.getcwd()),
+            mock.call(os.path.join('/tmp', file2), os.getcwd())
+        ], any_order=True)
+        self.assertEqual(mock_rm.call_count, 1)
+        mock_rm.assert_called_with(os.getcwd())
+
+    @mock.patch('argo_poem_tools.repos.shutil.copy')
+    @mock.patch('argo_poem_tools.repos.os.rmdir')
+    def test_clean_if_override(self, mock_rmdir, mock_copy):
+        self.repos1.clean()
+        self.assertEqual(mock_rmdir.call_count, 0)
+        self.assertEqual(mock_copy.call_count, 0)
