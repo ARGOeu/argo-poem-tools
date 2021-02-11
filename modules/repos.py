@@ -1,16 +1,18 @@
 import os
+import shutil
 import subprocess
 
 import requests
 
 
 class YUMRepos:
-    def __init__(self, hostname, token, profiles):
+    def __init__(self, hostname, token, profiles, override=True):
         self.hostname = hostname
         self.token = token
         self.profiles = profiles
         self.data = None
         self.missing_packages = None
+        self.override = override
 
     def get_data(self):
         headers = {
@@ -41,10 +43,15 @@ class YUMRepos:
         files = []
         for key, value in self.data.items():
             title = key
+            filename = os.path.join(path, title + '.repo')
             content = value['content']
 
-            files.append(os.path.join(path, title + '.repo'))
-            with open(os.path.join(path, title + '.repo'), 'w') as f:
+            files.append(filename)
+
+            if not self.override:
+                shutil.copytree(filename, os.path.join('/tmp', filename))
+
+            with open(filename, 'w') as f:
                 f.write(content)
 
         return sorted(files)

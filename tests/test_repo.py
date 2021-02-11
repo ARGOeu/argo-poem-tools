@@ -132,6 +132,12 @@ class YUMReposTests(unittest.TestCase):
             token='some-token-1234',
             profiles=''
         )
+        self.repos5 = YUMRepos(
+            hostname='mock.url.com',
+            token='some-token-1234',
+            profiles=['TEST_PROFILE1', 'TEST_PROFILE2'],
+            override=False
+        )
 
     def tearDown(self):
         if os.path.exists('argo-devel.repo'):
@@ -346,6 +352,56 @@ class YUMReposTests(unittest.TestCase):
         )
         self.assertEqual(
             self.repos1.missing_packages,
+            [
+                'nagios-plugins-bdii (1.0.14)',
+                'nagios-plugins-egi-notebooks (0.2.3)'
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.repos.shutil.copytree')
+    @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+    @mock.patch('argo_poem_tools.repos.requests.get')
+    def test_do_not_override_file_which_already_exists(
+            self, mock_request, mock_sp, mock_copy
+    ):
+        mock_request.side_effect = mock_request_ok
+        mock_sp.return_value = \
+            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        with open('argo-devel.repo', 'w') as f:
+            f.write('test')
+
+        files = self.repos5.create_file(os.getcwd())
+        mock_request.assert_called_once_with(
+            'https://mock.url.com/api/v2/repos/centos7',
+            headers={'x-api-key': 'some-token-1234',
+                     'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+            timeout=180
+        )
+        file1 = os.path.join(os.getcwd(), 'argo-devel.repo')
+        file2 = os.path.join(os.getcwd(), 'nordugrid-updates.repo')
+        self.assertEqual(mock_copy.call_count, 2)
+        mock_copy.assert_has_calls([
+            mock.call(file1, os.path.join('/tmp', file1)),
+            mock.call(file2, os.path.join('/tmp', file2))
+        ], any_order=True)
+        self.assertEqual(files, [file1, file2])
+        self.assertTrue(os.path.exists('argo-devel.repo'))
+        self.assertTrue(os.path.exists('nordugrid-updates.repo'))
+
+        with open('argo-devel.repo', 'r') as f:
+            content1 = f.read()
+
+        with open('nordugrid-updates.repo', 'r') as f:
+            content2 = f.read()
+
+        self.assertEqual(
+            content1, mock_data['data']['argo-devel']['content']
+        )
+        self.assertEqual(
+            content2, mock_data['data']['nordugrid-updates']['content']
+        )
+        self.assertEqual(
+            self.repos5.missing_packages,
             [
                 'nagios-plugins-bdii (1.0.14)',
                 'nagios-plugins-egi-notebooks (0.2.3)'
