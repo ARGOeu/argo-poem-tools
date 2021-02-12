@@ -74,6 +74,8 @@ class YUMRepos:
 
                 shutil.rmtree(tmp_dir)
 
+        subprocess.call(['yum', 'clean', 'all'])
+
     @classmethod
     def _get_centos_version(cls):
         string = subprocess.check_output(['rpm', '-q', 'centos-release'])

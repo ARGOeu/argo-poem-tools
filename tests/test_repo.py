@@ -428,12 +428,15 @@ class YUMReposTests(unittest.TestCase):
             ]
         )
 
+    @mock.patch('argo_poem_tools.repos.subprocess.call')
     @mock.patch('argo_poem_tools.repos.shutil.rmtree')
     @mock.patch('argo_poem_tools.repos.shutil.copy')
     @mock.patch('argo_poem_tools.repos.os.path.isfile')
     @mock.patch('argo_poem_tools.repos.os.listdir')
     @mock.patch('argo_poem_tools.repos.os.path.isdir')
-    def test_clean(self, mock_isdir, mock_ls, mock_isfile, mock_cp, mock_rm):
+    def test_clean(
+            self, mock_isdir, mock_ls, mock_isfile, mock_cp, mock_rm, mock_call
+    ):
         mock_isdir.return_value = True
         mock_ls.return_value = [
             'argo-devel.repo', 'nordugrid-updates.repo'
@@ -458,10 +461,15 @@ class YUMReposTests(unittest.TestCase):
         ], any_order=True)
         self.assertEqual(mock_rm.call_count, 1)
         mock_rm.assert_called_with('/tmp' + os.getcwd())
+        self.assertEqual(mock_call.call_count, 1)
+        mock_call.assert_called_with(['yum', 'clean', 'all'])
 
+    @mock.patch('argo_poem_tools.repos.subprocess.call')
     @mock.patch('argo_poem_tools.repos.shutil.copy')
     @mock.patch('argo_poem_tools.repos.shutil.rmtree')
-    def test_clean_if_override(self, mock_rmdir, mock_copy):
+    def test_clean_if_override(self, mock_rmdir, mock_copy, mock_call):
         self.repos1.clean()
         self.assertEqual(mock_rmdir.call_count, 0)
         self.assertEqual(mock_copy.call_count, 0)
+        self.assertEqual(mock_call.call_count, 1)
+        mock_call.assert_called_with(['yum', 'clean', 'all'])
