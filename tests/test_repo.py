@@ -318,10 +318,11 @@ class YUMReposTests(unittest.TestCase):
         )
 
     @mock.patch('argo_poem_tools.repos.shutil.copyfile')
+    @mock.patch('argo_poem_tools.repos.os.makedirs')
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_do_override_file_which_already_exists(
-            self, mock_request, mock_sp, mock_cp
+            self, mock_request, mock_sp, mock_mkdir, mock_cp
     ):
         mock_request.side_effect = mock_request_ok
         mock_sp.return_value = \
@@ -336,6 +337,7 @@ class YUMReposTests(unittest.TestCase):
                      'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
             timeout=180
         )
+        self.assertFalse(mock_mkdir.called)
         self.assertFalse(mock_cp.called)
         self.assertEqual(
             files,
@@ -366,10 +368,11 @@ class YUMReposTests(unittest.TestCase):
         )
 
     @mock.patch('argo_poem_tools.repos.shutil.copyfile')
+    @mock.patch('argo_poem_tools.repos.os.makedirs')
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_do_not_override_file_which_already_exists(
-            self, mock_request, mock_sp, mock_copy
+            self, mock_request, mock_sp, mock_mkdir, mock_copy
     ):
         mock_request.side_effect = mock_request_ok
         mock_sp.return_value = \
@@ -384,6 +387,8 @@ class YUMReposTests(unittest.TestCase):
                      'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
             timeout=180
         )
+        self.assertEqual(mock_mkdir.call_count, 2)
+        mock_mkdir.assert_called_with('/tmp' + os.getcwd(), exist_ok=True)
         file1 = os.path.join(os.getcwd(), 'argo-devel.repo')
         file2 = os.path.join(os.getcwd(), 'nordugrid-updates.repo')
         self.assertEqual(mock_copy.call_count, 2)

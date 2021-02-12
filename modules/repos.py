@@ -53,6 +53,7 @@ class YUMRepos:
             files.append(filename)
 
             if not self.override:
+                os.makedirs('/tmp' + self.path, exist_ok=True)
                 shutil.copyfile(filename, '/tmp' + filename)
 
             with open(filename, 'w') as f:
