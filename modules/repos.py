@@ -72,7 +72,7 @@ class YUMRepos:
                     if os.path.isfile(full_filename):
                         shutil.copy(full_filename, self.path)
 
-                os.rmdir(tmp_dir)
+                shutil.rmtree(tmp_dir)
 
     @classmethod
     def _get_centos_version(cls):

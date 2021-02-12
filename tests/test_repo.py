@@ -428,7 +428,7 @@ class YUMReposTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('argo_poem_tools.repos.os.rmdir')
+    @mock.patch('argo_poem_tools.repos.shutil.rmtree')
     @mock.patch('argo_poem_tools.repos.shutil.copy')
     @mock.patch('argo_poem_tools.repos.os.path.isfile')
     @mock.patch('argo_poem_tools.repos.os.listdir')
@@ -460,7 +460,7 @@ class YUMReposTests(unittest.TestCase):
         mock_rm.assert_called_with('/tmp' + os.getcwd())
 
     @mock.patch('argo_poem_tools.repos.shutil.copy')
-    @mock.patch('argo_poem_tools.repos.os.rmdir')
+    @mock.patch('argo_poem_tools.repos.shutil.rmtree')
     def test_clean_if_override(self, mock_rmdir, mock_copy):
         self.repos1.clean()
         self.assertEqual(mock_rmdir.call_count, 0)
