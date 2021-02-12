@@ -53,7 +53,7 @@ class YUMRepos:
             files.append(filename)
 
             if not self.override:
-                shutil.copytree(filename, os.path.join('/tmp', filename))
+                shutil.copyfile(filename, '/tmp' + filename)
 
             with open(filename, 'w') as f:
                 f.write(content)
@@ -62,7 +62,7 @@ class YUMRepos:
 
     def clean(self):
         if not self.override:
-            tmp_dir = os.path.join('/tmp', self.path)
+            tmp_dir = '/tmp' + self.path
             if os.path.isdir(tmp_dir):
                 src_files = os.listdir(tmp_dir)
                 for file in src_files:

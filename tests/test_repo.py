@@ -317,10 +317,11 @@ class YUMReposTests(unittest.TestCase):
             ]
         )
 
+    @mock.patch('argo_poem_tools.repos.shutil.copyfile')
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_do_override_file_which_already_exists(
-            self, mock_request, mock_sp
+            self, mock_request, mock_sp, mock_cp
     ):
         mock_request.side_effect = mock_request_ok
         mock_sp.return_value = \
@@ -335,6 +336,7 @@ class YUMReposTests(unittest.TestCase):
                      'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
             timeout=180
         )
+        self.assertFalse(mock_cp.called)
         self.assertEqual(
             files,
             [os.path.join(os.getcwd(), 'argo-devel.repo'),
@@ -363,7 +365,7 @@ class YUMReposTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('argo_poem_tools.repos.shutil.copytree')
+    @mock.patch('argo_poem_tools.repos.shutil.copyfile')
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_do_not_override_file_which_already_exists(
@@ -386,8 +388,8 @@ class YUMReposTests(unittest.TestCase):
         file2 = os.path.join(os.getcwd(), 'nordugrid-updates.repo')
         self.assertEqual(mock_copy.call_count, 2)
         mock_copy.assert_has_calls([
-            mock.call(file1, os.path.join('/tmp', file1)),
-            mock.call(file2, os.path.join('/tmp', file2))
+            mock.call(file1, '/tmp' + file1),
+            mock.call(file2, '/tmp' + file2)
         ], any_order=True)
         self.assertEqual(files, [file1, file2])
         self.assertTrue(os.path.exists('argo-devel.repo'))
@@ -428,21 +430,21 @@ class YUMReposTests(unittest.TestCase):
         file2 = os.path.join(os.getcwd(), 'nordugrid-updates.repo')
         self.repos5.clean()
         self.assertEqual(mock_isdir.call_count, 1)
-        mock_isdir.assert_called_with(os.path.join('/tmp', os.getcwd()))
+        mock_isdir.assert_called_with('/tmp' + os.getcwd())
         self.assertEqual(mock_ls.call_count, 1)
-        mock_ls.assert_called_with(os.path.join('/tmp', os.getcwd()))
+        mock_ls.assert_called_with('/tmp' + os.getcwd())
         self.assertEqual(mock_isfile.call_count, 2)
         mock_isfile.assert_has_calls([
-            mock.call(os.path.join('/tmp', file1)),
-            mock.call(os.path.join('/tmp', file2))
+            mock.call('/tmp' + file1),
+            mock.call('/tmp' + file2)
         ], any_order=True)
         self.assertEqual(mock_cp.call_count, 2)
         mock_cp.assert_has_calls([
-            mock.call(os.path.join('/tmp', file1), os.getcwd()),
-            mock.call(os.path.join('/tmp', file2), os.getcwd())
+            mock.call('/tmp' + file1, os.getcwd()),
+            mock.call('/tmp' + file2, os.getcwd())
         ], any_order=True)
         self.assertEqual(mock_rm.call_count, 1)
-        mock_rm.assert_called_with(os.getcwd())
+        mock_rm.assert_called_with('/tmp' + os.getcwd())
 
     @mock.patch('argo_poem_tools.repos.shutil.copy')
     @mock.patch('argo_poem_tools.repos.os.rmdir')
