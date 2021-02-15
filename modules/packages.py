@@ -65,6 +65,8 @@ class Packages:
     def __init__(self, data):
         self.data = data
         self.package_list = self._list()
+        self.versions_unlocked = False
+        self.locked_versions = []
         self.packages_different_version = None
         self.packages_not_found = None
         self.available_packages = None
@@ -80,8 +82,37 @@ class Packages:
 
         return list_packages
 
-    @staticmethod
-    def _get_available_packages():
+    def _get_locked_versions(self):
+        """
+        Get list of packages with locked versions among the packages requested.
+        """
+        output = subprocess.check_output(['yum', 'versionlock', 'list']).decode(
+            'utf-8'
+        )
+        locked_versions = [
+            item[0] for item in self._list() if item[0] in output
+        ]
+        self.locked_versions = locked_versions
+
+    def _unlock_versions(self):
+        if len(self.locked_versions) == 0:
+            self._get_locked_versions()
+
+        if len(self.locked_versions) > 0:
+            for item in self.locked_versions:
+                try:
+                    subprocess.check_call(
+                        ['yum', 'versionlock', 'delete', item]
+                    )
+                except subprocess.CalledProcessError:
+                    continue
+
+            self.versions_unlocked = True
+
+    def _get_available_packages(self):
+        if not self.versions_unlocked:
+            self._unlock_versions()
+
         output = subprocess.check_output(
             ['yum', 'list', 'available', '--showduplicates']
         )
@@ -231,14 +262,14 @@ class Packages:
 
                 if len(item) > 1:
                     if item[1] == installed_ver:
-                        change_tuple = ('-'.join(item),)
+                        change_tuple = (item,)
                     else:
                         change_tuple = (
-                            item[0] + '-' + installed_ver, '-'.join(item)
+                            (item[0], installed_ver), item
                         )
 
                 else:
-                    change_tuple = item
+                    change_tuple = (item,)
 
                 if _compare_vr(
                         (max_version[1], max_version[2]),
@@ -256,42 +287,14 @@ class Packages:
                     continue
 
             else:
-                if len(item) == 2:
-                    install.append('-'.join(item))
-                else:
-                    install.append(item[0])
+                install.append(item)
 
         diff_ver = []
         for item in self.packages_different_version:
             orig_item = self.package_list[
                 [p[0] for p in self.package_list].index(item[0])
             ]
-            if item[0] in installed_names:
-                installed_ver = installed_packages[
-                    installed_names.index(item[0])
-                ][1]
-                installed_release = installed_packages[
-                    installed_names.index(item[0])
-                ][2]
-
-                available_items = [
-                    pkg for pkg in self.available_packages if
-                    item[0] == pkg[0]
-                ]
-                max_version = self._get_max_version(available_items)
-
-                if _compare_vr(
-                        (max_version[1], max_version[2]),
-                        (installed_ver, installed_release)
-                ) > 0:
-                    diff_ver.append(
-                        ('-'.join(orig_item), '{}-{}'.format(
-                            item[0], max_version[1])
-                         )
-                    )
-
-            else:
-                diff_ver.append(('-'.join(orig_item), '-'.join(item[0:2])))
+            diff_ver.append('-'.join(orig_item))
 
         not_found = []
         for item in self.packages_not_found:
@@ -310,47 +313,90 @@ class Packages:
         not_upgraded = []
         downgraded = []
         not_downgraded = []
-        installed_diff_ver = []
-        not_installed_diff_ver = []
+        not_locked = []
         if install:
             for pkg in install:
+                if len(pkg) == 2:
+                    pkgi = '-'.join(pkg)
+                else:
+                    pkgi = pkg[0]
+
                 try:
-                    subprocess.check_call(['yum', '-y', 'install', pkg])
-                    installed.append(pkg)
+                    subprocess.check_call(['yum', '-y', 'install', pkgi])
+                    installed.append(pkgi)
+
+                    if len(pkg) == 2:
+                        try:
+                            subprocess.check_call(
+                                ['yum', 'versionlock', 'add', pkgi]
+                            )
+
+                        except subprocess.CalledProcessError:
+                            not_locked.append(pkgi)
 
                 except subprocess.CalledProcessError:
-                    not_installed.append(pkg)
+                    not_installed.append(pkgi)
 
         if upgrade:
             for pkg in upgrade:
                 try:
                     if len(pkg) == 2:
-                        subprocess.check_call(['yum', '-y', 'install', pkg[1]])
-                        upgraded.append(' -> '.join(pkg))
+                        subprocess.check_call(
+                            ['yum', '-y', 'install', '-'.join(pkg[1])]
+                        )
+                        upgraded.append(
+                            '{} -> {}'.format(
+                                '-'.join(pkg[0]), '-'.join(pkg[1])
+                            )
+                        )
+
+                        try:
+                            subprocess.check_call(
+                                ['yum', 'versionlock', 'add', '-'.join(pkg[1])]
+                            )
+
+                        except subprocess.CalledProcessError:
+                            not_locked.append('-'.join(pkg[1]))
+
                     else:
-                        subprocess.check_call(['yum', '-y', 'install', pkg[0]])
-                        upgraded.append(pkg[0])
+                        subprocess.check_call(
+                            ['yum', '-y', 'install', '-'.join(pkg[0])]
+                        )
+                        upgraded.append('-'.join(pkg[0]))
+
+                        if len(pkg[0]) == 2:
+                            try:
+                                subprocess.check_call(
+                                    ['yum', 'versionlock', 'add',
+                                     '-'.join(pkg[0])]
+                                )
+
+                            except subprocess.CalledProcessError:
+                                not_locked.append('-'.join(pkg[0]))
 
                 except subprocess.CalledProcessError:
-                    not_upgraded.append(pkg[0])
+                    not_upgraded.append('-'.join(pkg[0]))
 
         if downgrade:
             for pkg in downgrade:
                 try:
-                    subprocess.check_call(['yum', '-y', 'downgrade', pkg[1]])
-                    downgraded.append(' -> '.join(pkg))
+                    subprocess.check_call(
+                        ['yum', '-y', 'downgrade', '-'.join(pkg[1])]
+                    )
+                    downgraded.append(
+                        '{} -> {}'.format('-'.join(pkg[0]), '-'.join(pkg[1]))
+                    )
+
+                    try:
+                        subprocess.check_call(
+                            ['yum', 'versionlock', 'add', '-'.join(pkg[1])]
+                        )
+
+                    except subprocess.CalledProcessError:
+                        not_locked.append('-'.join(pkg[1]))
 
                 except subprocess.CalledProcessError:
-                    not_downgraded.append(pkg[0])
-
-        if diff_ver:
-            for pkg in diff_ver:
-                try:
-                    subprocess.check_call(['yum', '-y', 'install', pkg[1]])
-                    installed_diff_ver.append(' -> '.join(pkg))
-
-                except subprocess.CalledProcessError:
-                    not_installed_diff_ver.append(pkg[0])
+                    not_downgraded.append('-'.join(pkg[0]))
 
         info_msg = []
         warn_msg = []
@@ -363,10 +409,10 @@ class Packages:
         if downgraded:
             info_msg.append('Packages downgraded: ' + '; '.join(downgraded))
 
-        if installed_diff_ver:
-            info_msg.append(
-                'Packages installed with different version: ' + '; '.join(
-                    installed_diff_ver
+        if diff_ver:
+            warn_msg.append(
+                'Packages not found with requested version: ' + '; '.join(
+                    diff_ver
                 )
             )
 
@@ -385,9 +431,9 @@ class Packages:
                 'Packages not downgraded: ' + '; '.join(not_downgraded)
             )
 
-        if not_installed_diff_ver:
+        if not_locked:
             warn_msg.append(
-                'Packages not installed: ' + '; '.join(not_installed_diff_ver)
+                'Packages not locked: ' + '; '.join(not_locked)
             )
 
         if not_found:
@@ -398,22 +444,35 @@ class Packages:
         return info_msg, warn_msg
 
     def no_op(self):
-        install, upgrade0, downgrade0, diff_ver0, not_found = self._get()
+        install, upgrade0, downgrade0, diff_ver, not_found = self._get()
+
+        if self.versions_unlocked:
+            for pkg in self.locked_versions:
+                subprocess.check_call(
+                    ['yum', 'versionlock', 'add', pkg]
+                )
+
         info_msg = []
         warn_msg = []
 
         if install:
             info_msg.append(
-                'Packages to be installed: ' + '; '.join(install)
+                'Packages to be installed: ' + '; '.join(
+                    ['-'.join(item) for item in install]
+                )
             )
 
         if upgrade0:
             upgrade = []
             for item in upgrade0:
                 if len(item) > 1:
-                    upgrade.append(' -> '.join(item))
+                    upgrade.append(
+                        '{} -> {}'.format(
+                            '-'.join(item[0]), '-'.join(item[1])
+                        )
+                    )
                 else:
-                    upgrade.append(item[0])
+                    upgrade.append('-'.join(item[0]))
 
             info_msg.append(
                 'Packages to be upgraded: ' + '; '.join(upgrade)
@@ -422,19 +481,19 @@ class Packages:
         if downgrade0:
             downgrade = []
             for item in downgrade0:
-                downgrade.append(' -> '.join(item))
+                downgrade.append(
+                    '{} -> {}'.format(
+                        '-'.join(item[0]), '-'.join(item[1])
+                    )
+                )
 
             info_msg.append(
                 'Packages to be downgraded: ' + '; '.join(downgrade)
             )
 
-        if diff_ver0:
-            diff_ver = []
-            for item in diff_ver0:
-                diff_ver.append(' -> '.join(item))
-
-            info_msg.append(
-                'Packages to be installed with different version: ' + '; '.join(
+        if diff_ver:
+            warn_msg.append(
+                'Packages not found with requested version: ' + '; '.join(
                     diff_ver
                 )
             )

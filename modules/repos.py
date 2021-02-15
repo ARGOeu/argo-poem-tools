@@ -1,14 +1,20 @@
 import os
+import shutil
 import subprocess
 
 import requests
 
 
 class YUMRepos:
-    def __init__(self, hostname, token, profiles):
+    def __init__(
+            self, hostname, token, profiles, repos_path='/etc/yum.repos.d',
+            override=True
+    ):
         self.hostname = hostname
         self.token = token
         self.profiles = profiles
+        self.path = repos_path
+        self.override = override
         self.data = None
         self.missing_packages = None
 
@@ -34,20 +40,41 @@ class YUMRepos:
 
             raise requests.exceptions.RequestException(msg)
 
-    def create_file(self, path='/etc/yum.repos.d'):
+    def create_file(self):
         if not self.data:
             self.get_data()
 
         files = []
         for key, value in self.data.items():
             title = key
+            filename = os.path.join(self.path, title + '.repo')
             content = value['content']
 
-            files.append(os.path.join(path, title + '.repo'))
-            with open(os.path.join(path, title + '.repo'), 'w') as f:
+            files.append(filename)
+
+            if not self.override:
+                os.makedirs('/tmp' + self.path, exist_ok=True)
+                if os.path.isfile(filename):
+                    shutil.copyfile(filename, '/tmp' + filename)
+
+            with open(filename, 'w') as f:
                 f.write(content)
 
         return sorted(files)
+
+    def clean(self):
+        if not self.override:
+            tmp_dir = '/tmp' + self.path
+            if os.path.isdir(tmp_dir):
+                src_files = os.listdir(tmp_dir)
+                for file in src_files:
+                    full_filename = os.path.join(tmp_dir, file)
+                    if os.path.isfile(full_filename):
+                        shutil.copy(full_filename, self.path)
+
+                shutil.rmtree(tmp_dir)
+
+        subprocess.call(['yum', 'clean', 'all'])
 
     @classmethod
     def _get_centos_version(cls):

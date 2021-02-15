@@ -88,6 +88,20 @@ nagios-plugins-http-2.3.3-2.el7.x86_64
 
 """.encode('utf-8')
 
+mock_yum_versionlock_list = \
+"""
+Loaded plugins: fastestmirror, ovl, versionlock
+0:nagios-plugins-argo-0.1.12-20200811040245.d758e91.el7.*
+0:nagios-plugins-fedcloud-0.5.2-20201217023205.1b502c8.el7.*
+versionlock list done
+""".encode('utf-8')
+
+mock_empty_versionlock_list = \
+"""
+Loaded plugins: fastestmirror, ovl, versionlock
+versionlock list done
+""".encode('utf-8')
+
 
 def mock_func(*args, **kwargs):
     pass
@@ -161,6 +175,7 @@ class PackageTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')
     def test_get_available_packages(self, mock_yumdb):
+        self.pkgs.versions_unlocked = True
         mock_yumdb.return_value = mock_yum_list_available
         self.assertEqual(
             self.pkgs._get_available_packages(),
@@ -182,6 +197,67 @@ class PackageTests(unittest.TestCase):
                      version='1:1.18.4', release='3.el7')
             ]
         )
+
+    @mock.patch('argo_poem_tools.packages.Packages._unlock_versions')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_get_available_packages_if_versions_locked(
+            self, mock_yumdb, mock_unlock
+    ):
+        mock_yumdb.return_value = mock_yum_list_available
+        self.assertEqual(
+            self.pkgs._get_available_packages(),
+            [
+                dict(name='nagios', version='4.4.5', release='7.el7'),
+                dict(name='nagios-contrib', version='4.4.5', release='7.el7'),
+                dict(name='nagios-devel', version='4.4.5', release='7.el7'),
+                dict(name='nagios-plugin-grnet-agora', version='0.3',
+                     release='20200731072952.4427855.el7'),
+                dict(name='nagios-plugins-activemq', version='1.0.0',
+                     release='20170401112243.00c5f1d.el7'),
+                dict(name='nagios-plugins-disk_smb', version='2.3.3',
+                     release='2.el7'),
+                dict(name='nagios-plugins-globus', version='0.1.5',
+                     release='20200713050450.eb1e7d8.el7'),
+                dict(name='nagios-plugins-gocdb', version='1.0.0',
+                     release='20200713050609.a481696.el7'),
+                dict(name='NetworkManager-dispatcher-routing-rules',
+                     version='1:1.18.4', release='3.el7')
+            ]
+        )
+        self.assertEqual(mock_unlock.call_count, 1)
+
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_get_locked_versions(self, mock_versionlock):
+        mock_versionlock.return_value = mock_yum_versionlock_list
+        self.pkgs._get_locked_versions()
+        self.assertEqual(
+            sorted(self.pkgs.locked_versions),
+            ['nagios-plugins-argo', 'nagios-plugins-fedcloud']
+        )
+
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    def test_unlock_versions(self, mock_call, mock_versionlock):
+        mock_call.side_effect = mock_func
+        mock_versionlock.return_value = mock_yum_versionlock_list
+        self.pkgs._unlock_versions()
+        self.assertEqual(mock_call.call_count, 2)
+        mock_call.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'delete', 'nagios-plugins-argo']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'delete', 'nagios-plugins-fedcloud']
+            )
+        ], any_order=True)
+
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    def test_unlock_versions_if_none_locked(self, mock_call, mock_versionlock):
+        mock_call.side_effect = mock_func
+        mock_versionlock.return_value = mock_empty_versionlock_list
+        self.pkgs._unlock_versions()
+        self.assertEqual(mock_call.call_count, 0)
 
     @mock.patch('argo_poem_tools.packages.Packages._get_available_packages')
     def test_get_exceptions(self, mock_yumdb):
@@ -257,19 +333,28 @@ class PackageTests(unittest.TestCase):
         ]
         install, upgrade, downgrade, diff_ver, not_found = self.pkgs._get()
         self.assertEqual(
-            install, ['nagios-plugins-http']
+            install, [('nagios-plugins-http',)]
         )
         self.assertEqual(
             set(upgrade),
             {
-                ('nagios-plugins-fedcloud-0.4.0',
-                 'nagios-plugins-fedcloud-0.5.0'),
-                ('nagios-plugins-argo-0.1.12',)
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0')
+                ),
+                (
+                    ('nagios-plugins-argo', '0.1.12'),
+                )
             }
         )
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
         self.assertEqual(diff_ver, [])
         self.assertEqual(not_found, [])
@@ -300,18 +385,27 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(install, [])
         self.assertEqual(
             set(upgrade),
-            {('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-http',)}
+            {
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0')
+                ),
+                (
+                    ('nagios-plugins-http',),
+                )
+            }
 
         )
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
-        self.assertEqual(
-            diff_ver,
-            [('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')]
-        )
+        self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, ['nagios-plugins-argo-0.1.12'])
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
@@ -345,13 +439,18 @@ class PackageTests(unittest.TestCase):
         ]
         install, upgrade, downgrade, diff_ver, not_found = self.pkgs._get()
         self.assertFalse(mock_sp.called)
-        self.assertEqual(install, ['nagios-plugins-http'])
-        self.assertEqual(upgrade, [('nagios-plugins-argo-0.1.12', )])
+        self.assertEqual(install, [('nagios-plugins-http',)])
+        self.assertEqual(upgrade, [(('nagios-plugins-argo', '0.1.12'),)])
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ]
         )
-        self.assertEqual(diff_ver, [])
+        self.assertEqual(diff_ver, ['nagios-plugins-fedcloud-0.5.0'])
         self.assertEqual(not_found, [])
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
@@ -381,47 +480,69 @@ class PackageTests(unittest.TestCase):
         ]
         install, upgrade, downgrade, diff_ver, not_found = self.pkgs._get()
         self.assertFalse(mock_sp.called)
-        self.assertEqual(install, ['nagios-plugins-argo-0.1.12'])
+        self.assertEqual(install, [('nagios-plugins-argo', '0.1.12')])
         self.assertEqual(
             set(upgrade),
             {
-                ('nagios-plugins-fedcloud-0.4.0',
-                 'nagios-plugins-fedcloud-0.5.0'),
-                ('nagios-plugins-http',)
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0')
+                ),
+                (('nagios-plugins-http',),)
             }
         )
         self.assertEqual(
             downgrade,
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')]
-        )
-        self.assertEqual(
-            diff_ver, [
-                ('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
             ]
         )
+        self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, [])
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_install_packages(self, mock_get, mock_sp):
         mock_get.return_value = (
-            ['nagios-plugins-http'],
-            [('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-argo-0.1.12',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
+            [('nagios-plugins-http',)],
+            [
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0'),
+                ),
+                (('nagios-plugins-argo', '0.1.12'),)
+            ],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
             [],
             []
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 4)
+        self.assertEqual(mock_sp.call_count, 7)
         mock_sp.assert_has_calls([
             mock.call(
                 ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
             ),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+            )
         ], any_order=True)
         self.assertEqual(
             info,
@@ -442,24 +563,42 @@ class PackageTests(unittest.TestCase):
             self, mock_get, mock_sp
     ):
         mock_get.return_value = (
-            ['nagios-plugins-argo-0.1.12'],
-            [('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-http',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
-            [('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')],
+            [('nagios-plugins-argo', '0.1.12')],
+            [
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0'),
+                ),
+                (('nagios-plugins-http',),)
+            ],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
+            ['nagios-plugins-globus-0.1.5'],
             []
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 5)
+        self.assertEqual(mock_sp.call_count, 7)
         mock_sp.assert_has_calls([
             mock.call(
                 ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
             ),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-globus-0.1.6']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+            )
         ], any_order=True)
         self.assertEqual(
             info,
@@ -470,11 +609,15 @@ class PackageTests(unittest.TestCase):
                 '0.5.0; nagios-plugins-http',
                 'Packages downgraded: '
                 'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
-                'Packages installed with different version: '
-                'nagios-plugins-globus-0.1.5 -> nagios-plugins-globus-0.1.6'
             ]
         )
-        self.assertEqual(warn, [])
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found with requested version: '
+                'nagios-plugins-globus-0.1.5'
+            ]
+        )
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
@@ -482,33 +625,29 @@ class PackageTests(unittest.TestCase):
             self, mock_get, mock_sp
     ):
         mock_get.return_value = (
-            ['nagios-plugins-igtf-1.4.0'],
+            [('nagios-plugins-igtf', '1.4.0')],
             [],
             [],
-            [('nagios-plugins-fedcloud-0.5.0',
-              'nagios-plugins-fedcloud-0.6.0')],
+            ['nagios-plugins-fedcloud-0.5.0'],
             ['nagios-plugins-globus-0.1.5', 'nagios-plugins-argo-0.1.12',
              'nagios-plugins-http']
         )
         info, warn = self.pkgs.install()
         self.assertEqual(mock_sp.call_count, 2)
         mock_sp.assert_has_calls([
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0']),
             mock.call(
-                ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.6.0']
-            ),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0'])
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            )
         ], any_order=True)
         self.assertEqual(
-            info,
-            [
-                'Packages installed: nagios-plugins-igtf-1.4.0',
-                'Packages installed with different version: '
-                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.6.0'
-            ]
+            info, ['Packages installed: nagios-plugins-igtf-1.4.0']
         )
         self.assertEqual(
             warn,
             [
+                'Packages not found with requested version: '
+                'nagios-plugins-fedcloud-0.5.0',
                 'Packages not found: '
                 'nagios-plugins-globus-0.1.5; nagios-plugins-argo-0.1.12; '
                 'nagios-plugins-http'
@@ -521,21 +660,30 @@ class PackageTests(unittest.TestCase):
             self, mock_get, mock_sp
     ):
         mock_get.return_value = (
-            ['nagios-plugins-http'],
-            [('nagios-plugins-argo-0.1.12',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
-            [('nagios-plugins-fedcloud-0.5.0',
-              'nagios-plugins-fedcloud-0.4.0')],
+            [('nagios-plugins-http', )],
+            [(('nagios-plugins-argo', '0.1.12'),)],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
+            ['nagios-plugins-fedcloud-0.5.0'],
             []
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 4)
+        self.assertEqual(mock_sp.call_count, 5)
         mock_sp.assert_has_calls([
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.4.0'])
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+            )
         ], any_order=True)
         self.assertEqual(
             info,
@@ -543,28 +691,53 @@ class PackageTests(unittest.TestCase):
                 'Packages installed: nagios-plugins-http',
                 'Packages upgraded: nagios-plugins-argo-0.1.12',
                 'Packages downgraded: '
-                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
-                'Packages installed with different version: '
-                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.4.0'
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0'
             ]
         )
-        self.assertEqual(warn, [])
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found with requested version: '
+                'nagios-plugins-fedcloud-0.5.0'
+            ]
+        )
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_run(self, mock_get, mock_sp):
+        self.pkgs.versions_unlocked = True
+        self.pkgs.locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-igtf'
+        ]
         mock_get.return_value = (
-            ['nagios-plugins-http'],
-            [('nagios-plugins-fedcloud-0.4.0',
-              'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-argo-0.1.12',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
+            [('nagios-plugins-http', )],
+            [
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0'),
+                ),
+                (('nagios-plugins-argo', '0.1.12'),)
+            ],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
             [],
             []
         )
         mock_sp.side_effect = mock_func
         info, warn = self.pkgs.no_op()
-        self.assertFalse(mock_sp.called)
+        self.assertEqual(mock_sp.call_count, 2)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo']
+            ),
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf']
+            )
+        ])
         self.assertEqual(
             info,
             [
@@ -583,16 +756,33 @@ class PackageTests(unittest.TestCase):
     def test_no_op_if_installed_and_wrong_version_available(
             self, mock_get, mock_sp
     ):
+        self.pkgs.versions_unlocked = True
+        self.pkgs.locked_versions = ['nagios-plugins-fedcloud']
         mock_get.return_value = (
-            ['nagios-plugins-argo-0.1.12'],
-            [('nagios-plugins-fedcloud-0.4.0', 'nagios-plugins-fedcloud-0.5.0'),
-             ('nagios-plugins-http',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
-            [('nagios-plugins-globus-0.1.5', 'nagios-plugins-globus-0.1.6')],
+            [('nagios-plugins-argo', '0.1.12')],
+            [
+                (
+                    ('nagios-plugins-fedcloud', '0.4.0'),
+                    ('nagios-plugins-fedcloud', '0.5.0'),
+                ),
+                (('nagios-plugins-http', ),)
+            ],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
+            ['nagios-plugins-globus-0.1.5'],
             []
         )
         info, warn = self.pkgs.no_op()
-        self.assertFalse(mock_sp.called)
+        self.assertEqual(mock_sp.call_count, 1)
+        mock_sp.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud']
+            )
+        ])
         self.assertEqual(
             info,
             [
@@ -602,21 +792,24 @@ class PackageTests(unittest.TestCase):
                 '0.5.0; nagios-plugins-http',
                 'Packages to be downgraded: '
                 'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
-                'Packages to be installed with different version: '
-                'nagios-plugins-globus-0.1.5 -> nagios-plugins-globus-0.1.6'
             ]
         )
-        self.assertEqual(warn, [])
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found with requested version: '
+                'nagios-plugins-globus-0.1.5'
+            ]
+        )
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_if_packages_not_found(self, mock_get, mock_sp):
         mock_get.return_value = (
-            ['nagios-plugins-igtf-1.4.0'],
+            [('nagios-plugins-igtf', '1.4.0')],
             [],
             [],
-            [('nagios-plugins-fedcloud-0.5.0',
-              'nagios-plugins-fedcloud-0.6.0')],
+            ['nagios-plugins-fedcloud-0.5.0'],
             ['nagios-plugins-globus-0.1.5', 'nagios-plugins-argo-0.1.12',
              'nagios-plugins-http']
         )
@@ -625,14 +818,14 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(
             info,
             [
-                'Packages to be installed: nagios-plugins-igtf-1.4.0',
-                'Packages to be installed with different version: '
-                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.6.0'
+                'Packages to be installed: nagios-plugins-igtf-1.4.0'
             ]
         )
         self.assertEqual(
             warn,
             [
+                'Packages not found with requested version: '
+                'nagios-plugins-fedcloud-0.5.0',
                 'Packages not found: '
                 'nagios-plugins-globus-0.1.5; nagios-plugins-argo-0.1.12; '
                 'nagios-plugins-http'
@@ -645,11 +838,15 @@ class PackageTests(unittest.TestCase):
             self, mock_get, mock_sp
     ):
         mock_get.return_value = (
-            ['nagios-plugins-http'],
-            [('nagios-plugins-argo-0.1.12',)],
-            [('nagios-plugins-igtf-1.5.0', 'nagios-plugins-igtf-1.4.0')],
-            [('nagios-plugins-fedcloud-0.5.0',
-              'nagios-plugins-fedcloud-0.4.0')],
+            [('nagios-plugins-http', )],
+            [(('nagios-plugins-argo', '0.1.12'), )],
+            [
+                (
+                    ('nagios-plugins-igtf', '1.5.0'),
+                    ('nagios-plugins-igtf', '1.4.0')
+                )
+            ],
+            ['nagios-plugins-fedcloud-0.5.0'],
             []
         )
         info, warn = self.pkgs.no_op()
@@ -660,9 +857,13 @@ class PackageTests(unittest.TestCase):
                 'Packages to be installed: nagios-plugins-http',
                 'Packages to be upgraded: nagios-plugins-argo-0.1.12',
                 'Packages to be downgraded: '
-                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0',
-                'Packages to be installed with different version: '
-                'nagios-plugins-fedcloud-0.5.0 -> nagios-plugins-fedcloud-0.4.0'
+                'nagios-plugins-igtf-1.5.0 -> nagios-plugins-igtf-1.4.0'
             ]
         )
-        self.assertEqual(warn, [])
+        self.assertEqual(
+            warn,
+            [
+                'Packages not found with requested version: '
+                'nagios-plugins-fedcloud-0.5.0'
+            ]
+        )
