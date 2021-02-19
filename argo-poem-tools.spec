@@ -4,8 +4,8 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.2.0
-Release:       2%{?dist}
+Version:       0.2.1
+Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
 Group:         Development/System
@@ -44,6 +44,8 @@ rm -rf $RPM_BUILD_ROOT
 %{python3_sitelib}/%{underscore %{name}}/*.py
 
 %changelog
+* Fri Feb 19 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.1-1%{?dist}
+- ARGO-2951 Improve handing of probes versions
 * Mon Feb 1 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.0-2%{?dist}
 - ARGO-2858 argo-poem-tools wrongly marking packages as not available
 * Wed Jan 13 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.0-1%{?dist}
