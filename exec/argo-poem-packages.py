@@ -18,15 +18,23 @@ def main():
         '--noop', action='store_true', dest='noop',
         help='run script without installing'
     )
+    parser.add_argument(
+        '--backup-repos', action='store_true', dest='backup',
+        help='backup/restore yum repos instead overriding them'
+    )
     args = parser.parse_args()
     noop = args.noop
+    backup_repos = args.backup
 
     logger = logging.getLogger('argo-poem-packages')
     logger.setLevel(logging.INFO)
 
-    if noop:
-        stdout = logging.StreamHandler()
-        logger.addHandler(stdout)
+    stdout = logging.StreamHandler()
+    if not noop:
+        stdout.setLevel(logging.WARNING)
+
+    stdout.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+    logger.addHandler(stdout)
 
     # setting up logging to syslog
     syslog = logging.handlers.SysLogHandler(address='/dev/log')
@@ -49,7 +57,15 @@ def main():
         logger.info(
             'Sending request for profile(s): ' + ', '.join(profiles)
         )
-        repos = YUMRepos(hostname=hostname, token=token, profiles=profiles)
+        if backup_repos:
+            repos = YUMRepos(
+                hostname=hostname, token=token, profiles=profiles,
+                override=False
+            )
+
+        else:
+            repos = YUMRepos(hostname=hostname, token=token, profiles=profiles)
+
         data = repos.get_data()
 
         if not data:
@@ -73,6 +89,9 @@ def main():
 
             else:
                 info_msg, warn_msg = pkg.install()
+
+            # if there were repo files backed up, now they are restored
+            repos.clean()
 
             if info_msg:
                 for msg in info_msg:
