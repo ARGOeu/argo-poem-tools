@@ -23,3 +23,5 @@ Example output:
 ```
 
 There is also option of a *dry-run*. In that case, the tool is run by invoking `argo-poem-packages.py --noop`. Tool returns list of packages that would be installed, upgraded, or downgraded, without actually doing it. The output is sent both to stdout and syslog. 
+
+By default, the tool will override the repos in the `/etc/yum.repos.d` directory. If you wish to restore the YUM repos to the files that were in the directory before the tool was run, you should invoke the tool with the option `--backup-repos`.
