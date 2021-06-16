@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from unittest import mock
 
@@ -238,24 +239,27 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-argo', 'nagios-plugins-fedcloud']
         )
 
-    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
-    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
-    def test_unlock_versions(self, mock_call, mock_versionlock):
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
+    def test_unlock_versions(self, mock_call):
+        self.pkgs.locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
+        ]
         mock_call.side_effect = mock_func
-        mock_versionlock.return_value = mock_yum_versionlock_list
         self.pkgs._unlock_versions()
         self.assertEqual(mock_call.call_count, 2)
         mock_call.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'delete', 'nagios-plugins-argo']
+                ['yum', 'versionlock', 'delete', 'nagios-plugins-argo'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'delete', 'nagios-plugins-fedcloud']
+                ['yum', 'versionlock', 'delete', 'nagios-plugins-fedcloud'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ], any_order=True)
 
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')
-    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     def test_unlock_versions_if_none_locked(self, mock_call, mock_versionlock):
         mock_call.side_effect = mock_func
         mock_versionlock.return_value = mock_empty_versionlock_list
@@ -506,9 +510,10 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(diff_ver, ['nagios-plugins-globus-0.1.5'])
         self.assertEqual(not_found, [])
 
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
-    def test_install_packages(self, mock_get, mock_sp):
+    def test_install_packages(self, mock_get, mock_check_call, mock_call):
         mock_get.return_value = (
             [('nagios-plugins-http',)],
             [
@@ -527,24 +532,31 @@ class PackageTests(unittest.TestCase):
             [],
             []
         )
-        mock_sp.side_effect = mock_func
+        mock_check_call.side_effect = mock_func
+        mock_call.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 7)
-        mock_sp.assert_has_calls([
+        self.assertEqual(mock_check_call.call_count, 4)
+        mock_check_call.assert_has_calls([
             mock.call(
                 ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
             ),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+        ], any_order=True)
+        self.assertEqual(mock_call.call_count, 3)
+        mock_call.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ], any_order=True)
         self.assertEqual(
@@ -560,10 +572,11 @@ class PackageTests(unittest.TestCase):
         )
         self.assertEqual(warn, [])
 
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_install_packages_if_installed_and_wrong_version_available(
-            self, mock_get, mock_sp
+            self, mock_get, mock_check_call, mock_call
     ):
         mock_get.return_value = (
             [('nagios-plugins-argo', '0.1.12')],
@@ -583,24 +596,31 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-globus-0.1.5'],
             []
         )
-        mock_sp.side_effect = mock_func
+        mock_check_call.side_effect = mock_func
+        mock_call.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 7)
-        mock_sp.assert_has_calls([
+        self.assertEqual(mock_check_call.call_count, 4)
+        self.assertEqual(mock_call.call_count, 3)
+        mock_check_call.assert_has_calls([
             mock.call(
                 ['yum', '-y', 'install', 'nagios-plugins-fedcloud-0.5.0']
             ),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+        ], any_order=True)
+        mock_call.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud-0.5.0'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ], any_order=True)
         self.assertEqual(
@@ -622,10 +642,11 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_install_if_packages_not_found(
-            self, mock_get, mock_sp
+            self, mock_get, mock_check_call, mock_call
     ):
         mock_get.return_value = (
             [('nagios-plugins-igtf', '1.4.0')],
@@ -635,12 +656,18 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-globus-0.1.5', 'nagios-plugins-argo-0.1.12',
              'nagios-plugins-http']
         )
+        mock_check_call.side_effect = mock_func
+        mock_call.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 2)
-        mock_sp.assert_has_calls([
+        self.assertEqual(mock_check_call.call_count, 1)
+        self.assertEqual(mock_call.call_count, 1)
+        mock_check_call.assert_has_calls([
             mock.call(['yum', '-y', 'install', 'nagios-plugins-igtf-1.4.0']),
+        ], any_order=True)
+        mock_call.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ], any_order=True)
         self.assertEqual(
@@ -657,10 +684,11 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_install_if_packages_marked_for_upgrade_and_same_version_avail(
-            self, mock_get, mock_sp
+            self, mock_get, mock_check_call, mock_call
     ):
         mock_get.return_value = (
             [('nagios-plugins-http', )],
@@ -674,18 +702,24 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-fedcloud-0.5.0'],
             []
         )
-        mock_sp.side_effect = mock_func
+        mock_check_call.side_effect = mock_func
+        mock_call.side_effect = mock_func
         info, warn = self.pkgs.install()
-        self.assertEqual(mock_sp.call_count, 5)
-        mock_sp.assert_has_calls([
+        self.assertEqual(mock_check_call.call_count, 3)
+        mock_check_call.assert_has_calls([
             mock.call(['yum', '-y', 'install', 'nagios-plugins-http']),
             mock.call(['yum', '-y', 'downgrade', 'nagios-plugins-igtf-1.4.0']),
-            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12']),
+            mock.call(['yum', '-y', 'install', 'nagios-plugins-argo-0.1.12'])
+        ], any_order=True)
+        self.assertEqual(mock_call.call_count, 2)
+        mock_call.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf-1.4.0'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo-0.1.12'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ], any_order=True)
         self.assertEqual(
@@ -705,7 +739,7 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_run(self, mock_get, mock_sp):
         self.pkgs.versions_unlocked = True
@@ -735,12 +769,14 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(mock_sp.call_count, 2)
         mock_sp.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-argo']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-argo'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             ),
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
-        ])
+        ], any_order=True)
         self.assertEqual(
             info,
             [
@@ -754,7 +790,7 @@ class PackageTests(unittest.TestCase):
         )
         self.assertEqual(warn, [])
 
-    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_if_installed_and_wrong_version_available(
             self, mock_get, mock_sp
@@ -783,7 +819,8 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(mock_sp.call_count, 1)
         mock_sp.assert_has_calls([
             mock.call(
-                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud']
+                ['yum', 'versionlock', 'add', 'nagios-plugins-fedcloud'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ])
         self.assertEqual(
@@ -805,7 +842,7 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_if_packages_not_found(self, mock_get, mock_sp):
         mock_get.return_value = (
@@ -816,6 +853,7 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-globus-0.1.5', 'nagios-plugins-argo-0.1.12',
              'nagios-plugins-http']
         )
+        mock_sp.side_effect = mock_func
         info, warn = self.pkgs.no_op()
         self.assertFalse(mock_sp.called)
         self.assertEqual(
@@ -835,7 +873,7 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
-    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_if_packages_marked_for_upgrade_and_same_version_avail(
             self, mock_get, mock_sp
@@ -852,6 +890,7 @@ class PackageTests(unittest.TestCase):
             ['nagios-plugins-fedcloud-0.5.0'],
             []
         )
+        mock_sp.side_effect = mock_func
         info, warn = self.pkgs.no_op()
         self.assertFalse(mock_sp.called)
         self.assertEqual(

@@ -108,8 +108,9 @@ class Packages:
         if len(self.locked_versions) > 0:
             for item in self.locked_versions:
                 try:
-                    subprocess.check_call(
-                        ['yum', 'versionlock', 'delete', item]
+                    subprocess.call(
+                        ['yum', 'versionlock', 'delete', item],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
                 except subprocess.CalledProcessError:
                     continue
@@ -334,8 +335,9 @@ class Packages:
 
                     if len(pkg) == 2:
                         try:
-                            subprocess.check_call(
-                                ['yum', 'versionlock', 'add', pkgi]
+                            subprocess.call(
+                                ['yum', 'versionlock', 'add', pkgi],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE
                             )
 
                         except subprocess.CalledProcessError:
@@ -358,8 +360,9 @@ class Packages:
                         )
 
                         try:
-                            subprocess.check_call(
-                                ['yum', 'versionlock', 'add', '-'.join(pkg[1])]
+                            subprocess.call(
+                                ['yum', 'versionlock', 'add', '-'.join(pkg[1])],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE
                             )
 
                         except subprocess.CalledProcessError:
@@ -373,9 +376,11 @@ class Packages:
 
                         if len(pkg[0]) == 2:
                             try:
-                                subprocess.check_call(
+                                subprocess.call(
                                     ['yum', 'versionlock', 'add',
-                                     '-'.join(pkg[0])]
+                                     '-'.join(pkg[0])],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE
                                 )
 
                             except subprocess.CalledProcessError:
@@ -395,8 +400,9 @@ class Packages:
                     )
 
                     try:
-                        subprocess.check_call(
-                            ['yum', 'versionlock', 'add', '-'.join(pkg[1])]
+                        subprocess.call(
+                            ['yum', 'versionlock', 'add', '-'.join(pkg[1])],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE
                         )
 
                     except subprocess.CalledProcessError:
@@ -455,8 +461,9 @@ class Packages:
 
         if self.versions_unlocked:
             for pkg in self.locked_versions:
-                subprocess.check_call(
-                    ['yum', 'versionlock', 'add', pkg]
+                subprocess.call(
+                    ['yum', 'versionlock', 'add', pkg],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
 
         info_msg = []
