@@ -122,6 +122,7 @@ class RPMTests(unittest.TestCase):
         self.assertEqual(_compare_versions('0.2', '0.1'), 1)
         self.assertEqual(_compare_versions('2', '1'), 1)
         self.assertEqual(_compare_versions('1', '2'), -1)
+        self.assertEqual(_compare_versions('0.1.9', '0.1.13'), -1)
         self.assertEqual(
             _compare_versions(
                 '20200408044026.7943b04.el7',
@@ -153,7 +154,9 @@ class RPMTests(unittest.TestCase):
         )
         self.assertEqual(_compare_vr(('1', '1.el7'), ('1', '2.el7')), -1)
         self.assertEqual(_compare_vr(('2', '1.el7'), ('1', '2.el7')), 1)
-        self.assertEqual(_compare_vr(('0.0.1', '1.el7'), ('1.0.0', '2.el7')), -1)
+        self.assertEqual(
+            _compare_vr(('0.0.1', '1.el7'), ('1.0.0', '2.el7')), -1
+        )
         self.assertEqual(_compare_vr(('2.0.1', '1.el7'), ('1.0.0', '2.el7')), 1)
 
 

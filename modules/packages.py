@@ -23,21 +23,28 @@ def _compare_versions(v1, v2):
     :param v2: second string version
     :return: 1 if v1 is newer, 0 if they are equal, -1 if v2 is newer
     """
-    if v1 == v2:
-        return 0
+    arr1 = v1.split('.')
+    arr2 = v2.split('.')
 
-    else:
-        v1_list = v1.split('.')
-        v2_list = v2.split('.')
-        for i in range(len(v1_list)):
-            if v1_list[i] > v2_list[i]:
-                return 1
+    arr1 = [int(i) if i.isnumeric() else i for i in arr1]
+    arr2 = [int(i) if i.isnumeric() else i for i in arr2]
 
-            elif v1_list[i] < v2_list[i]:
-                return -1
+    n = len(arr1)
+    m = len(arr2)
 
-            else:
-                continue
+    if n > m:
+        for i in range(m, n):
+            arr2.append('0')
+    elif m > n:
+        for i in range(n, m):
+            arr1.append('0')
+
+    for i in range(len(arr1)):
+        if arr1[i] > arr2[i]:
+            return 1
+        elif arr2[i] > arr1[i]:
+            return -1
+    return 0
 
 
 def _compare_vr(vr1, vr2):
