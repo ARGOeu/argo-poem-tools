@@ -108,6 +108,11 @@ def mock_func(*args, **kwargs):
     pass
 
 
+def mock_func_exception(*args, **kwargs):
+    if args[0] == ['yum', 'versionlock', 'add', 'nagios-plugins-igtf']:
+        raise subprocess.CalledProcessError(None, None)
+
+
 class RPMTests(unittest.TestCase):
     def test_compare_versions(self):
         self.assertEqual(_compare_versions('1.0.0', '1.0.0'), 0)
@@ -918,7 +923,8 @@ class PackageTests(unittest.TestCase):
         ]
         mock_rpm.return_value = mock_rpm_qa
         mock_call.side_effect = mock_func
-        self.pkgs.versionlock()
+        warn = self.pkgs.versionlock()
+        self.assertFalse(warn)
         self.assertEqual(mock_call.call_count, 1)
         mock_call.assert_has_calls([
             mock.call(
@@ -926,3 +932,21 @@ class PackageTests(unittest.TestCase):
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
         ], any_order=True)
+
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_lock_unlocked_versions_exception(self, mock_rpm, mock_call):
+        self.pkgs.locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
+        ]
+        mock_rpm.return_value = mock_rpm_qa
+        mock_call.side_effect = mock_func_exception
+        warn = self.pkgs.versionlock()
+        self.assertEqual(mock_call.call_count, 1)
+        mock_call.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+        ], any_order=True)
+        self.assertEqual(warn, 'Packages not locked: nagios-plugins-igtf')
