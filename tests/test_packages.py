@@ -909,3 +909,20 @@ class PackageTests(unittest.TestCase):
                 'nagios-plugins-fedcloud-0.5.0'
             ]
         )
+
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_lock_unlocked_versions(self, mock_rpm, mock_call):
+        self.pkgs.locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
+        ]
+        mock_rpm.return_value = mock_rpm_qa
+        mock_call.side_effect = mock_func
+        self.pkgs.versionlock()
+        self.assertEqual(mock_call.call_count, 1)
+        mock_call.assert_has_calls([
+            mock.call(
+                ['yum', 'versionlock', 'add', 'nagios-plugins-igtf'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+        ], any_order=True)

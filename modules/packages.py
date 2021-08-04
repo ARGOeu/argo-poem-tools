@@ -518,3 +518,18 @@ class Packages:
             )
 
         return info_msg, warn_msg
+
+    def versionlock(self):
+        if not self.locked_versions:
+            self._get_locked_versions()
+
+        installed_pkgs = self._get_installed_packages()
+        installed_names = [pkg['name'] for pkg in installed_pkgs]
+
+        for item in self._list():
+            if len(item) > 1 and item[0] in installed_names and \
+                    not item[0] in self.locked_versions:
+                subprocess.call(
+                    ['yum', 'versionlock', 'add', item[0]],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
