@@ -333,16 +333,6 @@ class Packages:
                     subprocess.check_call(['yum', '-y', 'install', pkgi])
                     installed.append(pkgi)
 
-                    if len(pkg) == 2:
-                        try:
-                            subprocess.call(
-                                ['yum', 'versionlock', 'add', pkgi],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                            )
-
-                        except subprocess.CalledProcessError:
-                            not_locked.append(pkgi)
-
                 except subprocess.CalledProcessError:
                     not_installed.append(pkgi)
 
@@ -359,32 +349,11 @@ class Packages:
                             )
                         )
 
-                        try:
-                            subprocess.call(
-                                ['yum', 'versionlock', 'add', '-'.join(pkg[1])],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                            )
-
-                        except subprocess.CalledProcessError:
-                            not_locked.append('-'.join(pkg[1]))
-
                     else:
                         subprocess.check_call(
                             ['yum', '-y', 'install', '-'.join(pkg[0])]
                         )
                         upgraded.append('-'.join(pkg[0]))
-
-                        if len(pkg[0]) == 2:
-                            try:
-                                subprocess.call(
-                                    ['yum', 'versionlock', 'add',
-                                     '-'.join(pkg[0])],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE
-                                )
-
-                            except subprocess.CalledProcessError:
-                                not_locked.append('-'.join(pkg[0]))
 
                 except subprocess.CalledProcessError:
                     not_upgraded.append('-'.join(pkg[0]))
@@ -399,17 +368,10 @@ class Packages:
                         '{} -> {}'.format('-'.join(pkg[0]), '-'.join(pkg[1]))
                     )
 
-                    try:
-                        subprocess.call(
-                            ['yum', 'versionlock', 'add', '-'.join(pkg[1])],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                        )
-
-                    except subprocess.CalledProcessError:
-                        not_locked.append('-'.join(pkg[1]))
-
                 except subprocess.CalledProcessError:
                     not_downgraded.append('-'.join(pkg[0]))
+
+        lock_msg = self._lock_versions()
 
         info_msg = []
         warn_msg = []
@@ -454,17 +416,15 @@ class Packages:
                 'Packages not found: ' + '; '.join(not_found)
             )
 
+        if lock_msg:
+            warn_msg.append(lock_msg)
+
         return info_msg, warn_msg
 
     def no_op(self):
         install, upgrade0, downgrade0, diff_ver, not_found = self._get()
 
-        if self.versions_unlocked:
-            for pkg in self.locked_versions:
-                subprocess.call(
-                    ['yum', 'versionlock', 'add', pkg],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
+        self._lock_versions()
 
         info_msg = []
         warn_msg = []
@@ -519,7 +479,7 @@ class Packages:
 
         return info_msg, warn_msg
 
-    def versionlock(self):
+    def _lock_versions(self):
         if not self.locked_versions:
             self._get_locked_versions()
 
