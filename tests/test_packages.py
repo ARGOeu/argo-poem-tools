@@ -857,11 +857,8 @@ class PackageTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')
-    def test_lock_unlocked_versions(self, mock_rpm, mock_call):
-        self.pkgs.locked_versions = [
-            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
-        ]
-        mock_rpm.return_value = mock_rpm_qa
+    def test_lock_unlocked_versions(self, mock_subprocess, mock_call):
+        mock_subprocess.side_effect = [mock_yum_versionlock_list, mock_rpm_qa]
         mock_call.side_effect = mock_func
         warn = self.pkgs._lock_versions()
         self.assertFalse(warn)
@@ -875,11 +872,31 @@ class PackageTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')
-    def test_lock_unlocked_versions_exception(self, mock_rpm, mock_call):
-        self.pkgs.locked_versions = [
-            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
-        ]
-        mock_rpm.return_value = mock_rpm_qa
+    def test_lock_unlocked_versions_if_package_not_installed(
+            self, mock_subprocess, mock_call
+    ):
+        mock_rpm_qa1 = \
+            """
+            nagios-plugins-2.3.3-2.el7.x86_64
+            nagios-plugins-file_age-2.3.3-2.el7.x86_64
+            nagios-plugins-argo-0.1.13-20200901060701.5869b94.el7.noarch
+            nagios-plugins-fedcloud-0.5.2-20200511071632.05e2501.el7.noarch
+            nagios-plugins-dummy-2.3.3-2.el7.x86_64
+            nagios-common-4.4.5-7.el7.x86_64
+            nagios-plugins-perl-2.3.3-2.el7.x86_64
+            nagios-plugins-http-2.3.3-2.el7.x86_64
+    
+            """.encode('utf-8')
+        mock_subprocess.side_effect = [mock_yum_versionlock_list, mock_rpm_qa1]
+        mock_call.side_effect = mock_func
+        warn = self.pkgs._lock_versions()
+        self.assertFalse(warn)
+        self.assertEqual(mock_call.call_count, 0)
+
+    @mock.patch('argo_poem_tools.packages.subprocess.call')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_output')
+    def test_lock_unlocked_versions_exception(self, mock_subprocess, mock_call):
+        mock_subprocess.side_effect = [mock_yum_versionlock_list, mock_rpm_qa]
         mock_call.side_effect = mock_func_exception
         warn = self.pkgs._lock_versions()
         self.assertEqual(mock_call.call_count, 1)

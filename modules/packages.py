@@ -480,8 +480,7 @@ class Packages:
         return info_msg, warn_msg
 
     def _lock_versions(self):
-        if not self.locked_versions:
-            self._get_locked_versions()
+        self._get_locked_versions()
 
         installed_pkgs = self._get_installed_packages()
         installed_names = [pkg['name'] for pkg in installed_pkgs]
