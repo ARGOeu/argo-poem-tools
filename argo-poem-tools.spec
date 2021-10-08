@@ -4,7 +4,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.2.2
+Version:       0.2.3
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -44,6 +44,8 @@ rm -rf $RPM_BUILD_ROOT
 %{python3_sitelib}/%{underscore %{name}}/*.py
 
 %changelog
+* Fri Oct 8 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.3-1%{?dist}
+- ARGO-3236 Add version lock for installed packages
 * Thu Jul 29 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.2-1%{?dist}
 - ARGO-3178 Package marked to be upgraded when it is not supposed to
 * Fri Feb 19 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.1-1%{?dist}
