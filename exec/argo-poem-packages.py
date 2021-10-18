@@ -8,7 +8,7 @@ import sys
 
 import requests
 from argo_poem_tools.config import Config
-from argo_poem_tools.packages import Packages
+from argo_poem_tools.packages import Packages, PackageException
 from argo_poem_tools.repos import YUMRepos
 
 
@@ -134,6 +134,10 @@ def main():
         sys.exit(2)
 
     except configparser.NoOptionError as err:
+        logger.error(err)
+        sys.exit(2)
+
+    except PackageException as err:
         logger.error(err)
         sys.exit(2)
 
