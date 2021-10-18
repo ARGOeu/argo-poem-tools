@@ -2,7 +2,8 @@ import subprocess
 import unittest
 from unittest import mock
 
-from argo_poem_tools.packages import Packages, _compare_versions, _compare_vr
+from argo_poem_tools.packages import Packages, _compare_versions, _compare_vr, \
+    PackageException
 
 data = {
     "argo-devel": {
@@ -109,8 +110,11 @@ def mock_func(*args, **kwargs):
 
 
 def mock_func_exception(*args, **kwargs):
-    if args[0] == ['yum', 'versionlock', 'add', 'nagios-plugins-igtf']:
+    if args and args[0] == ['yum', 'versionlock', 'add', 'nagios-plugins-igtf']:
         raise subprocess.CalledProcessError(None, None)
+
+    else:
+        raise Exception('An error.')
 
 
 class RPMTests(unittest.TestCase):
@@ -734,6 +738,23 @@ class PackageTests(unittest.TestCase):
             ]
         )
 
+    @mock.patch('argo_poem_tools.packages.Packages._failsafe_lock_versions')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.Packages._get')
+    def test_install_lock_versions_if_exception(
+            self, mock_get, mock_check_call, mock_lock
+    ):
+        self.pkgs.initially_locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
+        ]
+        mock_get.side_effect = mock_func_exception
+        mock_check_call.side_effect = mock_func
+        mock_lock.side_effect = mock_func
+        with self.assertRaises(PackageException):
+            self.pkgs.install()
+        self.assertFalse(mock_check_call.called)
+        self.assertEqual(mock_lock.call_count, 1)
+
     @mock.patch('argo_poem_tools.packages.Packages._lock_versions')
     @mock.patch('argo_poem_tools.packages.Packages._get')
     def test_no_op_run(self, mock_get, mock_lock):
@@ -888,6 +909,23 @@ class PackageTests(unittest.TestCase):
                 'nagios-plugins-fedcloud-0.5.0'
             ]
         )
+
+    @mock.patch('argo_poem_tools.packages.Packages._failsafe_lock_versions')
+    @mock.patch('argo_poem_tools.packages.subprocess.check_call')
+    @mock.patch('argo_poem_tools.packages.Packages._get')
+    def test_no_op_lock_versions_if_exception(
+            self, mock_get, mock_check_call, mock_lock
+    ):
+        self.pkgs.initially_locked_versions = [
+            'nagios-plugins-argo', 'nagios-plugins-fedcloud'
+        ]
+        mock_get.side_effect = mock_func_exception
+        mock_check_call.side_effect = mock_func
+        mock_lock.side_effect = mock_func
+        with self.assertRaises(PackageException):
+            self.pkgs.no_op()
+        self.assertFalse(mock_check_call.called)
+        self.assertEqual(mock_lock.call_count, 1)
 
     @mock.patch('argo_poem_tools.packages.subprocess.call')
     @mock.patch('argo_poem_tools.packages.subprocess.check_output')

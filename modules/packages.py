@@ -68,6 +68,10 @@ def _compare_vr(vr1, vr2):
         return _compare_versions(v1, v2)
 
 
+class PackageException(Exception):
+    pass
+
+
 class Packages:
     def __init__(self, data):
         self.data = data
@@ -338,170 +342,186 @@ class Packages:
         return install, upgrade, downgrade, diff_ver, not_found
 
     def install(self):
-        install, upgrade, downgrade, diff_ver, not_found = self._get()
-        installed = []
-        not_installed = []
-        upgraded = []
-        not_upgraded = []
-        downgraded = []
-        not_downgraded = []
-        not_locked = []
-        if install:
-            for pkg in install:
-                if len(pkg) == 2:
-                    pkgi = '-'.join(pkg)
-                else:
-                    pkgi = pkg[0]
-
-                try:
-                    subprocess.check_call(['yum', '-y', 'install', pkgi])
-                    installed.append(pkgi)
-
-                except subprocess.CalledProcessError:
-                    not_installed.append(pkgi)
-
-        if upgrade:
-            for pkg in upgrade:
-                try:
+        try:
+            install, upgrade, downgrade, diff_ver, not_found = self._get()
+            installed = []
+            not_installed = []
+            upgraded = []
+            not_upgraded = []
+            downgraded = []
+            not_downgraded = []
+            not_locked = []
+            if install:
+                for pkg in install:
                     if len(pkg) == 2:
+                        pkgi = '-'.join(pkg)
+                    else:
+                        pkgi = pkg[0]
+
+                    try:
+                        subprocess.check_call(['yum', '-y', 'install', pkgi])
+                        installed.append(pkgi)
+
+                    except subprocess.CalledProcessError:
+                        not_installed.append(pkgi)
+
+            if upgrade:
+                for pkg in upgrade:
+                    try:
+                        if len(pkg) == 2:
+                            subprocess.check_call(
+                                ['yum', '-y', 'install', '-'.join(pkg[1])]
+                            )
+                            upgraded.append(
+                                '{} -> {}'.format(
+                                    '-'.join(pkg[0]), '-'.join(pkg[1])
+                                )
+                            )
+
+                        else:
+                            subprocess.check_call(
+                                ['yum', '-y', 'install', '-'.join(pkg[0])]
+                            )
+                            upgraded.append('-'.join(pkg[0]))
+
+                    except subprocess.CalledProcessError:
+                        not_upgraded.append('-'.join(pkg[0]))
+
+            if downgrade:
+                for pkg in downgrade:
+                    try:
                         subprocess.check_call(
-                            ['yum', '-y', 'install', '-'.join(pkg[1])]
+                            ['yum', '-y', 'downgrade', '-'.join(pkg[1])]
                         )
-                        upgraded.append(
+                        downgraded.append(
                             '{} -> {}'.format(
                                 '-'.join(pkg[0]), '-'.join(pkg[1])
                             )
                         )
 
-                    else:
-                        subprocess.check_call(
-                            ['yum', '-y', 'install', '-'.join(pkg[0])]
-                        )
-                        upgraded.append('-'.join(pkg[0]))
+                    except subprocess.CalledProcessError:
+                        not_downgraded.append('-'.join(pkg[0]))
 
-                except subprocess.CalledProcessError:
-                    not_upgraded.append('-'.join(pkg[0]))
+            lock_msg = self._lock_versions()
 
-        if downgrade:
-            for pkg in downgrade:
-                try:
-                    subprocess.check_call(
-                        ['yum', '-y', 'downgrade', '-'.join(pkg[1])]
+            info_msg = []
+            warn_msg = []
+            if installed:
+                info_msg.append('Packages installed: ' + '; '.join(installed))
+
+            if upgraded:
+                info_msg.append('Packages upgraded: ' + '; '.join(upgraded))
+
+            if downgraded:
+                info_msg.append('Packages downgraded: ' + '; '.join(downgraded))
+
+            if diff_ver:
+                warn_msg.append(
+                    'Packages not found with requested version: ' + '; '.join(
+                        diff_ver
                     )
-                    downgraded.append(
-                        '{} -> {}'.format('-'.join(pkg[0]), '-'.join(pkg[1]))
-                    )
-
-                except subprocess.CalledProcessError:
-                    not_downgraded.append('-'.join(pkg[0]))
-
-        lock_msg = self._lock_versions()
-
-        info_msg = []
-        warn_msg = []
-        if installed:
-            info_msg.append('Packages installed: ' + '; '.join(installed))
-
-        if upgraded:
-            info_msg.append('Packages upgraded: ' + '; '.join(upgraded))
-
-        if downgraded:
-            info_msg.append('Packages downgraded: ' + '; '.join(downgraded))
-
-        if diff_ver:
-            warn_msg.append(
-                'Packages not found with requested version: ' + '; '.join(
-                    diff_ver
                 )
+
+            if not_installed:
+                warn_msg.append(
+                    'Packages not installed: ' + '; '.join(not_installed)
+                )
+
+            if not_upgraded:
+                warn_msg.append(
+                    'Packages not upgraded: ' + '; '.join(not_upgraded)
+                )
+
+            if not_downgraded:
+                warn_msg.append(
+                    'Packages not downgraded: ' + '; '.join(not_downgraded)
+                )
+
+            if not_locked:
+                warn_msg.append(
+                    'Packages not locked: ' + '; '.join(not_locked)
+                )
+
+            if not_found:
+                warn_msg.append(
+                    'Packages not found: ' + '; '.join(not_found)
+                )
+
+            if lock_msg:
+                warn_msg.append(lock_msg)
+
+            return info_msg, warn_msg
+
+        except Exception as e:
+            self._failsafe_lock_versions()
+            raise PackageException('Error installing packages: {}'.format(
+                str(e))
             )
-
-        if not_installed:
-            warn_msg.append(
-                'Packages not installed: ' + '; '.join(not_installed)
-            )
-
-        if not_upgraded:
-            warn_msg.append(
-                'Packages not upgraded: ' + '; '.join(not_upgraded)
-            )
-
-        if not_downgraded:
-            warn_msg.append(
-                'Packages not downgraded: ' + '; '.join(not_downgraded)
-            )
-
-        if not_locked:
-            warn_msg.append(
-                'Packages not locked: ' + '; '.join(not_locked)
-            )
-
-        if not_found:
-            warn_msg.append(
-                'Packages not found: ' + '; '.join(not_found)
-            )
-
-        if lock_msg:
-            warn_msg.append(lock_msg)
-
-        return info_msg, warn_msg
 
     def no_op(self):
-        install, upgrade0, downgrade0, diff_ver, not_found = self._get()
+        try:
+            install, upgrade0, downgrade0, diff_ver, not_found = self._get()
 
-        self._lock_versions()
+            self._lock_versions()
 
-        info_msg = []
-        warn_msg = []
+            info_msg = []
+            warn_msg = []
 
-        if install:
-            info_msg.append(
-                'Packages to be installed: ' + '; '.join(
-                    ['-'.join(item) for item in install]
+            if install:
+                info_msg.append(
+                    'Packages to be installed: ' + '; '.join(
+                        ['-'.join(item) for item in install]
+                    )
                 )
-            )
 
-        if upgrade0:
-            upgrade = []
-            for item in upgrade0:
-                if len(item) > 1:
-                    upgrade.append(
+            if upgrade0:
+                upgrade = []
+                for item in upgrade0:
+                    if len(item) > 1:
+                        upgrade.append(
+                            '{} -> {}'.format(
+                                '-'.join(item[0]), '-'.join(item[1])
+                            )
+                        )
+                    else:
+                        upgrade.append('-'.join(item[0]))
+
+                info_msg.append(
+                    'Packages to be upgraded: ' + '; '.join(upgrade)
+                )
+
+            if downgrade0:
+                downgrade = []
+                for item in downgrade0:
+                    downgrade.append(
                         '{} -> {}'.format(
                             '-'.join(item[0]), '-'.join(item[1])
                         )
                     )
-                else:
-                    upgrade.append('-'.join(item[0]))
 
-            info_msg.append(
-                'Packages to be upgraded: ' + '; '.join(upgrade)
-            )
+                info_msg.append(
+                    'Packages to be downgraded: ' + '; '.join(downgrade)
+                )
 
-        if downgrade0:
-            downgrade = []
-            for item in downgrade0:
-                downgrade.append(
-                    '{} -> {}'.format(
-                        '-'.join(item[0]), '-'.join(item[1])
+            if diff_ver:
+                warn_msg.append(
+                    'Packages not found with requested version: ' + '; '.join(
+                        diff_ver
                     )
                 )
 
-            info_msg.append(
-                'Packages to be downgraded: ' + '; '.join(downgrade)
-            )
-
-        if diff_ver:
-            warn_msg.append(
-                'Packages not found with requested version: ' + '; '.join(
-                    diff_ver
+            if not_found:
+                warn_msg.append(
+                    'Packages not found: ' + '; '.join(not_found)
                 )
-            )
 
-        if not_found:
-            warn_msg.append(
-                'Packages not found: ' + '; '.join(not_found)
-            )
+            return info_msg, warn_msg
 
-        return info_msg, warn_msg
+        except Exception as e:
+            self._failsafe_lock_versions()
+            raise PackageException(
+                'Error analysing packages: {}'.format(str(e))
+            )
 
     def _lock_versions(self):
         self._get_locked_versions()
