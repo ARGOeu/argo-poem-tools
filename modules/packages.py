@@ -73,6 +73,7 @@ class Packages:
         self.data = data
         self.package_list = self._list()
         self.versions_unlocked = False
+        self.initially_locked_versions = []
         self.locked_versions = []
         self.packages_different_version = None
         self.packages_not_found = None
@@ -101,6 +102,27 @@ class Packages:
         ]
         self.locked_versions = locked_versions
 
+    def _failsafe_lock_versions(self):
+        """
+        Locking the packages that have already been locked in case of exception.
+        """
+        warn = []
+        for item in self.initially_locked_versions:
+            try:
+                subprocess.call(
+                    ['yum', 'versionlock', 'add', item],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+
+            except subprocess.CalledProcessError:
+                warn.append(item)
+
+        if warn:
+            return 'Packages not locked: {}'.format(', '.join(warn))
+
+        else:
+            return None
+
     def _unlock_versions(self):
         if len(self.locked_versions) == 0:
             self._get_locked_versions()
@@ -112,6 +134,8 @@ class Packages:
                         ['yum', 'versionlock', 'delete', item],
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE
                     )
+                    self.initially_locked_versions.append(item)
+
                 except subprocess.CalledProcessError:
                     continue
 
