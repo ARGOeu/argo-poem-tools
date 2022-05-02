@@ -1,4 +1,5 @@
-#argo-poem-tools
+# argo-poem-tools
+
 Configuration is in file `/etc/argo-poem-tools/argo-poem-tools.conf`. It consists of 2 sections: `[GENERAL]` and `[PROFILES]`. In the first section, tenant hostname and token are defined, and in second, there should be a comma separated list of metric profiles. Profile list must be the same as the one in NCG config file. 
 
 Example config file:
