@@ -31,6 +31,7 @@ Script which installs packages on ARGO mon boxes.
 
 %install
 %{py3_install "--record=INSTALLED_FILES" }
+install --directory %{buildroot}/%{_localstatedir}/log/argo-poem-tools/
 
 
 %clean
@@ -42,6 +43,8 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_sysconfdir}/%{name}/argo-poem-tools.conf
 %dir %{python3_sitelib}/%{underscore %{name}}/
 %{python3_sitelib}/%{underscore %{name}}/*.py
+
+%attr(0755,root,root) %dir %{_localstatedir}/log/argo-poem-tools/
 
 %changelog
 * Mon Dec 6 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.4-1%{?dist}
