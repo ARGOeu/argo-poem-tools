@@ -11,6 +11,8 @@ from argo_poem_tools.config import Config
 from argo_poem_tools.packages import Packages, PackageException
 from argo_poem_tools.repos import YUMRepos
 
+LOGFILE = "/var/log/argo-poem-tools/argo-poem-tools.log"
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -26,25 +28,30 @@ def main():
     noop = args.noop
     backup_repos = args.backup
 
-    logger = logging.getLogger('argo-poem-packages')
+    logger = logging.getLogger("argo-poem-packages")
     logger.setLevel(logging.INFO)
 
     stdout = logging.StreamHandler()
     if not noop:
         stdout.setLevel(logging.WARNING)
 
-    stdout.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+    stdout.setFormatter(
+        logging.Formatter("%(levelname)s - %(message)s")
+    )
     logger.addHandler(stdout)
 
-    # setting up logging to syslog
-    syslog = logging.handlers.SysLogHandler(address='/dev/log')
-    syslog.setLevel(logging.INFO)
-    syslog.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # setting up logging to file
+    logfile = logging.handlers.RotatingFileHandler(
+        LOGFILE, maxBytes=512 * 1024, backupCount=5
+    )
+    logfile.setLevel(logging.INFO)
+    logfile.setFormatter(logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "%Y-%m-%d %H:%M:%S"
     ))
 
     # add the handler to the root logger
-    logger.addHandler(syslog)
+    logger.addHandler(logfile)
 
     try:
         subprocess.call(['yum', 'clean', 'all'])
@@ -114,7 +121,8 @@ def main():
                 if not noop:
                     if missing_packages_msg:
                         print('WARNING: ' + missing_packages_msg)
-                    logger.info('ok!')
+
+                logger.info("The run finished successfully.")
                 sys.exit(0)
 
     except requests.exceptions.ConnectionError as err:
