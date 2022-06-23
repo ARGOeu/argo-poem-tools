@@ -34,6 +34,25 @@ pipeline {
                         }
                     }
                 }
+                stage ('Execute tests') {
+                    agent {
+                        docker {
+                            image 'argo.registry:5000/epel-7-ams'
+                            args '-u jenkins:jenkins -v /dev/log:/dev/log'
+                        }
+                    }
+                    steps {
+                        sh '''
+                            cd $WORKSPACE/$PROJECT_DIR/
+                            rm -f tests/argo_poem_tools
+                            ln -s $PWD/modules/ tests/argo_poem_tools
+                            coverage run -m xmlrunner discover --output-file junit.xml -v tests/
+                            coverage xml
+                        '''
+                        cobertura coberturaReportFile: '**/coverage.xml'
+                        junit '**/junit.xml'
+                    }
+                }
             }
         }
     }
