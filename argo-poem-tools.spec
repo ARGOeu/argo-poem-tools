@@ -4,7 +4,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.2.4
+Version:       0.2.5
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -31,6 +31,7 @@ Script which installs packages on ARGO mon boxes.
 
 %install
 %{py3_install "--record=INSTALLED_FILES" }
+install --directory %{buildroot}/%{_localstatedir}/log/argo-poem-tools/
 
 
 %clean
@@ -43,7 +44,13 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{python3_sitelib}/%{underscore %{name}}/
 %{python3_sitelib}/%{underscore %{name}}/*.py
 
+%attr(0755,root,root) %dir %{_localstatedir}/log/argo-poem-tools/
+
 %changelog
+* Tue Jun 28 2022 Katarina Zailac <kzailac@srce.hr> - 0.2.5-1%{?dist}
+- AO-657 Include tests in Jenkinsfile for argo-poem-tools
+- ARGO-3908 Create separate log file
+- ARGO-3888 Package version breaking the tool
 * Mon Dec 6 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.4-1%{?dist}
 - ARGO-3389 Handle version locking when there is a broken repo
 * Fri Oct 8 2021 Katarina Zailac <kzailac@srce.hr> - 0.2.3-1%{?dist}
