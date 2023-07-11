@@ -51,13 +51,13 @@ class YUMRepos:
 
         if response.status_code == 200:
             data_json = response.json()
-            self.data = data_json["data"]
+            data = data_json["data"]
             if data_internal:
                 for name, info in data_internal.items():
-                    if name in self.data:
-                        p = self.data[name]["packages"] + info["packages"]
+                    if name in data:
+                        p = data[name]["packages"] + info["packages"]
                         packages = dict((v["name"], v) for v in p).values()
-                        self.data[name]["packages"] = sorted(
+                        data[name]["packages"] = sorted(
                             packages, key=lambda k: k["name"]
                         )
 
@@ -67,7 +67,7 @@ class YUMRepos:
                 ))
             )
 
-            return self.data
+            return data
 
         else:
             try:
@@ -78,9 +78,9 @@ class YUMRepos:
 
             raise requests.exceptions.RequestException(msg)
 
-    def create_file(self):
+    def create_file(self, include_internal=False):
         if not self.data:
-            self.get_data()
+            self.data = self.get_data(include_internal=include_internal)
 
         files = []
         for key, value in self.data.items():
