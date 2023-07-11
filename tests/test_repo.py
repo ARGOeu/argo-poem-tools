@@ -23,13 +23,13 @@ mock_data = {
                     "version": "0.5.0"
                 },
                 {
+                    "name": "nagios-plugins-globus",
+                    "version": "0.1.5"
+                },
+                {
                     "name": "nagios-plugins-igtf",
                     "version": "1.4.0"
                 },
-                {
-                    "name": "nagios-plugins-globus",
-                    "version": "0.1.5"
-                }
             ]
         },
         "nordugrid-updates": {
@@ -56,6 +56,41 @@ mock_data = {
         "nagios-plugins-egi-notebooks (0.2.3)"]
 }
 
+mock_data_internal_metrics = {
+    "data": {
+        "argo-devel": {
+            "content": "[argo-devel]\n"
+                       "name=ARGO Product Repository\n"
+                       "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
+                       "devel/centos6/\n"
+                       "gpgcheck=0\n"
+                       "enabled=1\n"
+                       "priority=99\n"
+                       "exclude=\n"
+                       "includepkgs=\n",
+            "packages": [
+                {
+                    "name": "argo-probe-ams-publisher",
+                    "version": "present"
+                },
+                {
+                    "name": "argo-probe-argo-tools",
+                    "version": "0.1.1"
+                },
+                {
+                    "name": "argo-probe-oidc",
+                    "version": "present"
+                },
+                {
+                    "name": "nagios-plugins-igtf",
+                    "version": "1.4.0"
+                }
+            ]
+        }
+    },
+    "missing_packages": []
+}
+
 
 class MockResponse:
     def __init__(self, dat, status_code):
@@ -78,7 +113,11 @@ class MockResponse:
 
 
 def mock_request_ok(*args, **kwargs):
-    return MockResponse(mock_data, 200)
+    if "repos_internal" in args[0]:
+        return MockResponse(mock_data_internal_metrics, 200)
+
+    else:
+        return MockResponse(mock_data, 200)
 
 
 def mock_request_wrong_url(*args, **kwargs):
@@ -175,6 +214,94 @@ class YUMReposTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
+    def test_get_data_including_internal_metrics(self, mock_request, mock_sp):
+        mock_request.side_effect = mock_request_ok
+        mock_sp.return_value = \
+            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        data = self.repos1.get_data(include_internal=True)
+        self.assertEqual(mock_request.call_count, 2)
+        mock_request.assert_has_calls([
+            mock.call(
+                "https://mock.url.com/api/v2/repos/centos7",
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            ),
+            mock.call(
+                "https://mock.url.com/api/v2/repos_internal/centos7",
+                headers={'x-api-key': 'some-token-1234'},
+                timeout=180
+            )
+        ], any_order=True)
+        self.assertEqual(
+            data, {
+                "argo-devel": {
+                    "content": "[argo-devel]\n"
+                               "name=ARGO Product Repository\n"
+                               "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
+                               "devel/centos6/\n"
+                               "gpgcheck=0\n"
+                               "enabled=1\n"
+                               "priority=99\n"
+                               "exclude=\n"
+                               "includepkgs=\n",
+                    "packages": [
+                        {
+                            "name": "argo-probe-ams-publisher",
+                            "version": "present"
+                        },
+                        {
+                            "name": "argo-probe-argo-tools",
+                            "version": "0.1.1"
+                        },
+                        {
+                            "name": "argo-probe-oidc",
+                            "version": "present"
+                        },
+                        {
+                            "name": "nagios-plugins-fedcloud",
+                            "version": "0.5.0"
+                        },
+                        {
+                            "name": "nagios-plugins-globus",
+                            "version": "0.1.5"
+                        },
+                        {
+                            "name": "nagios-plugins-igtf",
+                            "version": "1.4.0"
+                        }
+                    ]
+                },
+                "nordugrid-updates": {
+                    "content": "[nordugrid-updates]\n"
+                               "name=NorduGrid - $basearch - Updates\n"
+                               "baseurl=http://download.nordugrid.org/repos/6"
+                               "/centos/el6/$basearch/updates\n"
+                               "enabled=1\n"
+                               "gpgcheck=1\n"
+                               "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
+                               "nordugrid-6\n"
+                               "priority=1\n"
+                               "exclude=ca_*\n",
+                    "packages": [
+                        {
+                            "name": "nordugrid-arc-nagios-plugins",
+                            "version": "2.0.0"
+                        }
+                    ]
+                }
+            }
+        )
+        self.assertEqual(
+            self.repos1.missing_packages,
+            [
+                'nagios-plugins-bdii (1.0.14)',
+                'nagios-plugins-egi-notebooks (0.2.3)'
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+    @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_hostname_http(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_ok
         mock_sp.return_value = \
@@ -197,11 +324,100 @@ class YUMReposTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
+    def test_get_data_if_hostname_http_including_internal(
+            self, mock_request, mock_sp
+    ):
+        mock_request.side_effect = mock_request_ok
+        mock_sp.return_value = \
+            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        data = self.repos2.get_data(include_internal=True)
+        mock_request.assert_has_calls([
+            mock.call(
+                "https://mock.url.com/api/v2/repos/centos7",
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1]'},
+                timeout=180
+            ),
+            mock.call(
+                "https://mock.url.com/api/v2/repos_internal/centos7",
+                headers={'x-api-key': 'some-token-1234'},
+                timeout=180
+            )
+        ], any_order=True)
+        self.assertEqual(
+            data, {
+                "argo-devel": {
+                    "content": "[argo-devel]\n"
+                               "name=ARGO Product Repository\n"
+                               "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
+                               "devel/centos6/\n"
+                               "gpgcheck=0\n"
+                               "enabled=1\n"
+                               "priority=99\n"
+                               "exclude=\n"
+                               "includepkgs=\n",
+                    "packages": [
+                        {
+                            "name": "argo-probe-ams-publisher",
+                            "version": "present"
+                        },
+                        {
+                            "name": "argo-probe-argo-tools",
+                            "version": "0.1.1"
+                        },
+                        {
+                            "name": "argo-probe-oidc",
+                            "version": "present"
+                        },
+                        {
+                            "name": "nagios-plugins-fedcloud",
+                            "version": "0.5.0"
+                        },
+                        {
+                            "name": "nagios-plugins-globus",
+                            "version": "0.1.5"
+                        },
+                        {
+                            "name": "nagios-plugins-igtf",
+                            "version": "1.4.0"
+                        }
+                    ]
+                },
+                "nordugrid-updates": {
+                    "content": "[nordugrid-updates]\n"
+                               "name=NorduGrid - $basearch - Updates\n"
+                               "baseurl=http://download.nordugrid.org/repos/6"
+                               "/centos/el6/$basearch/updates\n"
+                               "enabled=1\n"
+                               "gpgcheck=1\n"
+                               "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
+                               "nordugrid-6\n"
+                               "priority=1\n"
+                               "exclude=ca_*\n",
+                    "packages": [
+                        {
+                            "name": "nordugrid-arc-nagios-plugins",
+                            "version": "2.0.0"
+                        }
+                    ]
+                }
+            }
+        )
+        self.assertEqual(
+            self.repos2.missing_packages,
+            [
+                'nagios-plugins-bdii (1.0.14)',
+                'nagios-plugins-egi-notebooks (0.2.3)'
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+    @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_hostname_https(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_ok
         mock_sp.return_value = \
             'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
-        data = self.repos1.get_data()
+        data = self.repos3.get_data()
         mock_request.assert_called_once_with(
             'https://mock.url.com/api/v2/repos/centos7',
             headers={'x-api-key': 'some-token-1234',
@@ -210,7 +426,96 @@ class YUMReposTests(unittest.TestCase):
         )
         self.assertEqual(data, mock_data['data'])
         self.assertEqual(
-            self.repos1.missing_packages,
+            self.repos3.missing_packages,
+            [
+                'nagios-plugins-bdii (1.0.14)',
+                'nagios-plugins-egi-notebooks (0.2.3)'
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+    @mock.patch('argo_poem_tools.repos.requests.get')
+    def test_get_data_if_hostname_https_including_internal(
+            self, mock_request, mock_sp
+    ):
+        mock_request.side_effect = mock_request_ok
+        mock_sp.return_value = \
+            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        data = self.repos3.get_data(include_internal=True)
+        mock_request.assert_has_calls([
+            mock.call(
+                "https://mock.url.com/api/v2/repos/centos7",
+                headers={'x-api-key': 'some-token-1234',
+                         'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+                timeout=180
+            ),
+            mock.call(
+                "https://mock.url.com/api/v2/repos_internal/centos7",
+                headers={'x-api-key': 'some-token-1234'},
+                timeout=180
+            )
+        ], any_order=True)
+        self.assertEqual(
+            data, {
+                "argo-devel": {
+                    "content": "[argo-devel]\n"
+                               "name=ARGO Product Repository\n"
+                               "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
+                               "devel/centos6/\n"
+                               "gpgcheck=0\n"
+                               "enabled=1\n"
+                               "priority=99\n"
+                               "exclude=\n"
+                               "includepkgs=\n",
+                    "packages": [
+                        {
+                            "name": "argo-probe-ams-publisher",
+                            "version": "present"
+                        },
+                        {
+                            "name": "argo-probe-argo-tools",
+                            "version": "0.1.1"
+                        },
+                        {
+                            "name": "argo-probe-oidc",
+                            "version": "present"
+                        },
+                        {
+                            "name": "nagios-plugins-fedcloud",
+                            "version": "0.5.0"
+                        },
+                        {
+                            "name": "nagios-plugins-globus",
+                            "version": "0.1.5"
+                        },
+                        {
+                            "name": "nagios-plugins-igtf",
+                            "version": "1.4.0"
+                        }
+                    ]
+                },
+                "nordugrid-updates": {
+                    "content": "[nordugrid-updates]\n"
+                               "name=NorduGrid - $basearch - Updates\n"
+                               "baseurl=http://download.nordugrid.org/repos/6"
+                               "/centos/el6/$basearch/updates\n"
+                               "enabled=1\n"
+                               "gpgcheck=1\n"
+                               "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
+                               "nordugrid-6\n"
+                               "priority=1\n"
+                               "exclude=ca_*\n",
+                    "packages": [
+                        {
+                            "name": "nordugrid-arc-nagios-plugins",
+                            "version": "2.0.0"
+                        }
+                    ]
+                }
+            }
+        )
+        self.assertEqual(
+            self.repos3.missing_packages,
             [
                 'nagios-plugins-bdii (1.0.14)',
                 'nagios-plugins-egi-notebooks (0.2.3)'
@@ -225,6 +530,18 @@ class YUMReposTests(unittest.TestCase):
             'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data()
+            self.assertEqual(err, '500 Server Error')
+
+    @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+    @mock.patch('argo_poem_tools.repos.requests.get')
+    def test_get_data_if_server_error_including_internal(
+            self, mock_request, mock_sp
+    ):
+        mock_request.side_effect = mock_request_server_error
+        mock_sp.return_value = \
+            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        with self.assertRaises(requests.exceptions.RequestException) as err:
+            self.repos1.get_data(include_internal=True)
             self.assertEqual(err, '500 Server Error')
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
