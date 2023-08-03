@@ -4,7 +4,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.2.5
+Version:       0.2.6
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -47,6 +47,8 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0755,root,root) %dir %{_localstatedir}/log/argo-poem-tools/
 
 %changelog
+* Thu Aug 3 2023 Katarina Zailac <kzailac@srce.hr> - 0.2.6-1%{?dist}
+- ARGO-4237 Add flag to install internal metrics
 * Tue Jun 28 2022 Katarina Zailac <kzailac@srce.hr> - 0.2.5-1%{?dist}
 - AO-657 Include tests in Jenkinsfile for argo-poem-tools
 - ARGO-3908 Create separate log file

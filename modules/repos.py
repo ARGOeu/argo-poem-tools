@@ -18,18 +18,56 @@ class YUMRepos:
         self.data = None
         self.missing_packages = None
 
-    def get_data(self):
+    def get_data(self, include_internal=False):
         headers = {
             'x-api-key': self.token,
             'profiles': self._refine_list_of_profiles()
         }
         response = requests.get(self._build_url(), headers=headers, timeout=180)
 
+        data_internal = None
+        missing_packages_internal = list()
+        if include_internal:
+            response_internal = requests.get(
+                self._build_url(include_internal=True),
+                headers={"x-api-key": self.token},
+                timeout=180
+            )
+
+            if response_internal.status_code == 200:
+                internal_json = response_internal.json()
+                data_internal = internal_json["data"]
+                missing_packages_internal = internal_json["missing_packages"]
+
+            else:
+                try:
+                    msg = response_internal.json()["detail"]
+
+                except (ValueError, TypeError, KeyError):
+                    msg = f"{response_internal.status_code} " \
+                          f"{response_internal.reason}"
+
+                raise requests.exceptions.RequestException(msg)
+
         if response.status_code == 200:
-            data = response.json()
-            self.data = data['data']
-            self.missing_packages = data['missing_packages']
-            return self.data
+            data_json = response.json()
+            data = data_json["data"]
+            if data_internal:
+                for name, info in data_internal.items():
+                    if name in data:
+                        p = data[name]["packages"] + info["packages"]
+                        packages = dict((v["name"], v) for v in p).values()
+                        data[name]["packages"] = sorted(
+                            packages, key=lambda k: k["name"]
+                        )
+
+            self.missing_packages = sorted(
+                list(set(
+                    data_json['missing_packages'] + missing_packages_internal
+                ))
+            )
+
+            return data
 
         else:
             try:
@@ -40,9 +78,9 @@ class YUMRepos:
 
             raise requests.exceptions.RequestException(msg)
 
-    def create_file(self):
+    def create_file(self, include_internal=False):
         if not self.data:
-            self.get_data()
+            self.data = self.get_data(include_internal=include_internal)
 
         files = []
         for key, value in self.data.items():
@@ -84,7 +122,7 @@ class YUMRepos:
 
         return 'centos' + string.split('-')[2]
 
-    def _build_url(self):
+    def _build_url(self, include_internal=False):
         hostname = self.hostname
         if hostname.startswith('https://'):
             hostname = hostname[8:]
@@ -95,8 +133,13 @@ class YUMRepos:
         if hostname.endswith('/'):
             hostname = hostname[0:-1]
 
-        return 'https://' + hostname + '/api/v2/repos/' + \
-               self._get_centos_version()
+        if include_internal:
+            repos = "repos_internal"
+
+        else:
+            repos = "repos"
+
+        return f"https://{hostname}/api/v2/{repos}/{self._get_centos_version()}"
 
     def _refine_list_of_profiles(self):
         return '[' + ', '.join(self.profiles) + ']'
