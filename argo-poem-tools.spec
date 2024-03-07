@@ -1,6 +1,4 @@
 %define underscore() %(echo %1 | sed 's/-/_/g')
-%define stripc() %(echo %1 | sed 's/el7.centos/el7/')
-%define mydist %{stripc %{dist}}
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
@@ -14,7 +12,14 @@ Prefix:        %{_prefix}
 BuildArch:     noarch
 
 BuildRequires: python3-devel
+
+%if 0%{?el7}
 Requires:      python36-requests
+
+%else
+Requires:      python3-requests
+
+%endif
 
 
 %description
