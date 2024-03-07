@@ -91,6 +91,40 @@ mock_data_internal_metrics = {
     "missing_packages": []
 }
 
+OS_RELEASE_EL7 = \
+    b'NAME="CentOS Linux"\n' \
+    b'VERSION="7 (Core)"\n' \
+    b'ID="centos"\n' \
+    b'ID_LIKE="rhel fedora"\n' \
+    b'VERSION_ID="7"\n' \
+    b'PRETTY_NAME="CentOS Linux 7 (Core)"\n' \
+    b'ANSI_COLOR="0;31"\n' \
+    b'CPE_NAME="cpe:/o:centos:centos:7"\n' \
+    b'HOME_URL="https://www.centos.org/"\n' \
+    b'BUG_REPORT_URL="https://bugs.centos.org/"\n\n' \
+    b'CENTOS_MANTISBT_PROJECT="CentOS-7"\n' \
+    b'CENTOS_MANTISBT_PROJECT_VERSION="7"\n' \
+    b'REDHAT_SUPPORT_PRODUCT="centos"\n' \
+    b'REDHAT_SUPPORT_PRODUCT_VERSION="7"\n\n'
+
+OS_RELEASE_EL9 = \
+    b'NAME="Rocky Linux"\n' \
+    b'VERSION="9.1 (Blue Onyx)"\n' \
+    b'ID="rocky"\n' \
+    b'ID_LIKE="rhel centos fedora"\n' \
+    b'VERSION_ID="9.1"\n' \
+    b'PLATFORM_ID="platform:el9"\n' \
+    b'PRETTY_NAME="Rocky Linux 9.1 (Blue Onyx)"\n' \
+    b'ANSI_COLOR="0;32"\n' \
+    b'LOGO="fedora-logo-icon"\n' \
+    b'CPE_NAME="cpe:/o:rocky:rocky:9::baseos"\n' \
+    b'HOME_URL="https://rockylinux.org/"\n' \
+    b'BUG_REPORT_URL="https://bugs.rockylinux.org/"\n' \
+    b'ROCKY_SUPPORT_PRODUCT="Rocky-Linux-9"\n' \
+    b'ROCKY_SUPPORT_PRODUCT_VERSION="9.1"\n' \
+    b'REDHAT_SUPPORT_PRODUCT="Rocky Linux"\n' \
+    b'REDHAT_SUPPORT_PRODUCT_VERSION="9.1"\n'
+
 
 class MockResponse:
     def __init__(self, dat, status_code):
@@ -192,10 +226,9 @@ class YUMReposTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
-    def test_get_data(self, mock_request, mock_sp):
+    def test_get_data_el7(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_ok
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL7
         data = self.repos1.get_data()
         mock_request.assert_called_once_with(
             'https://mock.url.com/api/v2/repos/centos7',
@@ -214,21 +247,41 @@ class YUMReposTests(unittest.TestCase):
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
+    def test_get_data_el9(self, mock_request, mock_sp):
+        mock_request.side_effect = mock_request_ok
+        mock_sp.return_value = OS_RELEASE_EL9
+        data = self.repos1.get_data()
+        mock_request.assert_called_once_with(
+            'https://mock.url.com/api/v2/repos/rocky9',
+            headers={'x-api-key': 'some-token-1234',
+                     'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
+            timeout=180
+        )
+        self.assertEqual(data, mock_data['data'])
+        self.assertEqual(
+            self.repos1.missing_packages,
+            [
+                'nagios-plugins-bdii (1.0.14)',
+                'nagios-plugins-egi-notebooks (0.2.3)'
+            ]
+        )
+
+    @mock.patch('argo_poem_tools.repos.subprocess.check_output')
+    @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_including_internal_metrics(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_ok
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         data = self.repos1.get_data(include_internal=True)
         self.assertEqual(mock_request.call_count, 2)
         mock_request.assert_has_calls([
             mock.call(
-                "https://mock.url.com/api/v2/repos/centos7",
+                "https://mock.url.com/api/v2/repos/rocky9",
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
             ),
             mock.call(
-                "https://mock.url.com/api/v2/repos_internal/centos7",
+                "https://mock.url.com/api/v2/repos_internal/rocky9",
                 headers={'x-api-key': 'some-token-1234'},
                 timeout=180
             )
@@ -304,11 +357,10 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_hostname_http(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_ok
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         data = self.repos2.get_data()
         mock_request.assert_called_once_with(
-            'https://mock.url.com/api/v2/repos/centos7',
+            'https://mock.url.com/api/v2/repos/rocky9',
             headers={'x-api-key': 'some-token-1234',
                      'profiles': '[TEST_PROFILE1]'},
             timeout=180
@@ -328,18 +380,17 @@ class YUMReposTests(unittest.TestCase):
             self, mock_request, mock_sp
     ):
         mock_request.side_effect = mock_request_ok
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         data = self.repos2.get_data(include_internal=True)
         mock_request.assert_has_calls([
             mock.call(
-                "https://mock.url.com/api/v2/repos/centos7",
+                "https://mock.url.com/api/v2/repos/rocky9",
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1]'},
                 timeout=180
             ),
             mock.call(
-                "https://mock.url.com/api/v2/repos_internal/centos7",
+                "https://mock.url.com/api/v2/repos_internal/rocky9",
                 headers={'x-api-key': 'some-token-1234'},
                 timeout=180
             )
@@ -415,11 +466,10 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_hostname_https(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_ok
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         data = self.repos3.get_data()
         mock_request.assert_called_once_with(
-            'https://mock.url.com/api/v2/repos/centos7',
+            'https://mock.url.com/api/v2/repos/rocky9',
             headers={'x-api-key': 'some-token-1234',
                      'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
             timeout=180
@@ -439,18 +489,17 @@ class YUMReposTests(unittest.TestCase):
             self, mock_request, mock_sp
     ):
         mock_request.side_effect = mock_request_ok
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         data = self.repos3.get_data(include_internal=True)
         mock_request.assert_has_calls([
             mock.call(
-                "https://mock.url.com/api/v2/repos/centos7",
+                "https://mock.url.com/api/v2/repos/rocky9",
                 headers={'x-api-key': 'some-token-1234',
                          'profiles': '[TEST_PROFILE1, TEST_PROFILE2]'},
                 timeout=180
             ),
             mock.call(
-                "https://mock.url.com/api/v2/repos_internal/centos7",
+                "https://mock.url.com/api/v2/repos_internal/rocky9",
                 headers={'x-api-key': 'some-token-1234'},
                 timeout=180
             )
@@ -526,8 +575,7 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_server_error(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_server_error
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data()
             self.assertEqual(err, '500 Server Error')
@@ -538,8 +586,7 @@ class YUMReposTests(unittest.TestCase):
             self, mock_request, mock_sp
     ):
         mock_request.side_effect = mock_request_server_error
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data(include_internal=True)
             self.assertEqual(err, '500 Server Error')
@@ -548,8 +595,7 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_wrong_url(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_wrong_url
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data()
             self.assertEqual(err, '404 Not Found')
@@ -558,8 +604,7 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_wrong_token(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_wrong_token
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data()
             self.assertEqual(
@@ -571,8 +616,7 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_no_profiles(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_wrong_profiles
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data()
             self.assertEqual(
@@ -585,8 +629,7 @@ class YUMReposTests(unittest.TestCase):
             self, mock_request, mock_sp
     ):
         mock_request.side_effect = mock_request_json_without_details_key
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with self.assertRaises(requests.exceptions.RequestException) as err:
             self.repos1.get_data()
             self.assertEqual(
@@ -597,8 +640,7 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.YUMRepos.get_data')
     def test_create_file(self, mock_get_data, mock_sp):
         mock_get_data.return_value = mock_data["data"]
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         files = self.repos1.create_file()
         mock_get_data.assert_called_once_with(include_internal=False)
         self.assertEqual(
@@ -626,8 +668,7 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.YUMRepos.get_data')
     def test_create_file_including_internal(self, mock_get_data, mock_sp):
         mock_get_data.return_value = mock_data["data"]
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         files = self.repos1.create_file(include_internal=True)
         mock_get_data.assert_called_once_with(include_internal=True)
         self.assertEqual(
@@ -660,8 +701,7 @@ class YUMReposTests(unittest.TestCase):
             self, mock_get_data, mock_sp, mock_mkdir, mock_isfile, mock_cp
     ):
         mock_get_data.return_value = mock_data["data"]
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with open('argo-devel.repo', 'w') as f:
             f.write('test')
 
@@ -700,8 +740,7 @@ class YUMReposTests(unittest.TestCase):
             self, mock_get_data, mock_sp, mock_mkdir, mock_isfile, mock_cp
     ):
         mock_get_data.return_value = mock_data["data"]
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         with open('argo-devel.repo', 'w') as f:
             f.write('test')
 
@@ -740,8 +779,7 @@ class YUMReposTests(unittest.TestCase):
             self, mock_get_data, mock_sp, mock_mkdir, mock_isfile, mock_copy
     ):
         mock_get_data.return_value = mock_data["data"]
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         mock_isfile.return_value = True
         with open('argo-devel.repo', 'w') as f:
             f.write('test')
@@ -787,8 +825,7 @@ class YUMReposTests(unittest.TestCase):
             self, mock_get_data, mock_sp, mock_mkdir, mock_isfile, mock_copy
     ):
         mock_get_data.return_value = mock_data["data"]
-        mock_sp.return_value = \
-            'centos-release-7-7.1908.0.el7.centos.x86_64'.encode('utf-8')
+        mock_sp.return_value = OS_RELEASE_EL9
         mock_isfile.return_value = True
         with open('argo-devel.repo', 'w') as f:
             f.write('test')

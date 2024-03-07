@@ -116,11 +116,23 @@ class YUMRepos:
 
     @classmethod
     def _get_centos_version(cls):
-        string = subprocess.check_output(['rpm', '-q', 'centos-release'])
+        string = subprocess.check_output(["cat", "/etc/os-release"])
 
         string = string.decode('utf-8')
 
-        return 'centos' + string.split('-')[2]
+        string_list = string.split("\n")
+
+        name = [
+            line.split("=")[1].lower().split(" ")[0].replace('"', "") for line
+            in string_list if line.startswith("NAME")
+        ][0]
+
+        version = [
+            line.split("=")[1].split(".")[0].replace('"', "") for
+            line in string_list if line.startswith("VERSION_ID")
+        ][0]
+
+        return f"{name}{version}"
 
     def _build_url(self, include_internal=False):
         hostname = self.hostname
