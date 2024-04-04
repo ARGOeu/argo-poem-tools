@@ -1,10 +1,8 @@
 %define underscore() %(echo %1 | sed 's/-/_/g')
-%define stripc() %(echo %1 | sed 's/el7.centos/el7/')
-%define mydist %{stripc %{dist}}
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.2.6
+Version:       0.2.7
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -14,7 +12,14 @@ Prefix:        %{_prefix}
 BuildArch:     noarch
 
 BuildRequires: python3-devel
+
+%if 0%{?el7}
 Requires:      python36-requests
+
+%else
+Requires:      python3-requests
+
+%endif
 
 
 %description
@@ -47,6 +52,8 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0755,root,root) %dir %{_localstatedir}/log/argo-poem-tools/
 
 %changelog
+* Thu Apr 4 2024 Katarina Zailac <kzailac@srce.hr> - 0.2.7-1%{?dist}
+- ARGO-4502 Generalize method for fetching distro name
 * Thu Aug 3 2023 Katarina Zailac <kzailac@srce.hr> - 0.2.6-1%{?dist}
 - ARGO-4237 Add flag to install internal metrics
 * Tue Jun 28 2022 Katarina Zailac <kzailac@srce.hr> - 0.2.5-1%{?dist}
