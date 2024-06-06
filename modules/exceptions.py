@@ -15,6 +15,6 @@ class PackageException(MyException):
     pass
 
 
-class YUMReposException(MyException):
+class POEMException(MyException):
     def __str__(self):
         return f"Error fetching YUM repos: {str(self.msg)}"

@@ -8,7 +8,7 @@ import sys
 import requests
 from argo_poem_tools.config import Config
 from argo_poem_tools.exceptions import ConfigException, PackageException, \
-    YUMReposException
+    POEMException
 from argo_poem_tools.packages import Packages
 from argo_poem_tools.repos import YUMRepos
 
@@ -136,7 +136,7 @@ def main():
             requests.exceptions.ConnectionError,
             requests.exceptions.RequestException,
             ConfigException,
-            YUMReposException,
+            POEMException,
             PackageException
     ) as err:
         logger.error(err)
