@@ -3,6 +3,7 @@ import shutil
 import subprocess
 
 import requests
+from argo_poem_tools.exceptions import YUMReposException
 
 
 class YUMRepos:
@@ -40,14 +41,16 @@ class YUMRepos:
                 missing_packages_internal = internal_json["missing_packages"]
 
             else:
+                msg = f"{response_internal.status_code} " \
+                      f"{response_internal.reason}"
+
                 try:
-                    msg = response_internal.json()["detail"]
+                    msg = f"{msg}: {response_internal.json()['detail']}"
 
                 except (ValueError, TypeError, KeyError):
-                    msg = f"{response_internal.status_code} " \
-                          f"{response_internal.reason}"
+                    pass
 
-                raise requests.exceptions.RequestException(msg)
+                raise YUMReposException(msg)
 
         if response.status_code == 200:
             data_json = response.json()
@@ -70,13 +73,15 @@ class YUMRepos:
             return data
 
         else:
+            msg = f"{response.status_code} {response.reason}"
+
             try:
-                msg = response.json()['detail']
+                msg = f"{msg}: {response.json()['detail']}"
 
             except (ValueError, TypeError, KeyError):
-                msg = '%s %s' % (response.status_code, response.reason)
+                pass
 
-            raise requests.exceptions.RequestException(msg)
+            raise YUMReposException(msg)
 
     def create_file(self, include_internal=False):
         if not self.data:

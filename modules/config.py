@@ -1,5 +1,7 @@
 import configparser
 
+from argo_poem_tools.exceptions import ConfigException
+
 
 class Config:
     def __init__(self, file="/etc/argo-poem-tools/argo-poem-tools.conf"):
@@ -57,11 +59,3 @@ class Config:
 
     def get_profiles(self):
         return self._get_entries(entry="metricprofiles")
-
-
-class ConfigException(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return f"Configuration file error: {str(self.msg)}"

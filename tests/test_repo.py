@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest import mock
 
-import requests
+from argo_poem_tools.exceptions import YUMReposException
 from argo_poem_tools.repos import YUMRepos
 
 mock_data = {
@@ -576,9 +576,12 @@ class YUMReposTests(unittest.TestCase):
     def test_get_data_if_server_error(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_server_error
         mock_sp.return_value = OS_RELEASE_EL9
-        with self.assertRaises(requests.exceptions.RequestException) as err:
+        with self.assertRaises(YUMReposException) as err:
             self.repos1.get_data()
-            self.assertEqual(err, '500 Server Error')
+        self.assertEqual(
+            err.exception.__str__(),
+            "Error fetching YUM repos: 500 Server Error"
+        )
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
@@ -587,41 +590,50 @@ class YUMReposTests(unittest.TestCase):
     ):
         mock_request.side_effect = mock_request_server_error
         mock_sp.return_value = OS_RELEASE_EL9
-        with self.assertRaises(requests.exceptions.RequestException) as err:
+        with self.assertRaises(YUMReposException) as err:
             self.repos1.get_data(include_internal=True)
-            self.assertEqual(err, '500 Server Error')
+        self.assertEqual(
+            err.exception.__str__(),
+            "Error fetching YUM repos: 500 Server Error"
+        )
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_wrong_url(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_wrong_url
         mock_sp.return_value = OS_RELEASE_EL9
-        with self.assertRaises(requests.exceptions.RequestException) as err:
+        with self.assertRaises(YUMReposException) as err:
             self.repos1.get_data()
-            self.assertEqual(err, '404 Not Found')
+        self.assertEqual(
+            err.exception.__str__(),
+            "Error fetching YUM repos: 404 Not Found"
+        )
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_wrong_token(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_wrong_token
         mock_sp.return_value = OS_RELEASE_EL9
-        with self.assertRaises(requests.exceptions.RequestException) as err:
+        with self.assertRaises(YUMReposException) as err:
             self.repos1.get_data()
-            self.assertEqual(
-                err, '403 Forbidden: Authentication credentials were not '
-                     'provided.'
-            )
+        self.assertEqual(
+            err.exception.__str__(),
+            "Error fetching YUM repos: 403 Forbidden: "
+            "Authentication credentials were not provided."
+        )
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
     def test_get_data_if_no_profiles(self, mock_request, mock_sp):
         mock_request.side_effect = mock_request_wrong_profiles
         mock_sp.return_value = OS_RELEASE_EL9
-        with self.assertRaises(requests.exceptions.RequestException) as err:
+        with self.assertRaises(YUMReposException) as err:
             self.repos1.get_data()
-            self.assertEqual(
-                err, '400 Bad Request: You must define profile!'
-            )
+        self.assertEqual(
+            err.exception.__str__(),
+            "Error fetching YUM repos: 400 Bad Request: "
+            "You must define profile!"
+        )
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.requests.get')
@@ -630,11 +642,12 @@ class YUMReposTests(unittest.TestCase):
     ):
         mock_request.side_effect = mock_request_json_without_details_key
         mock_sp.return_value = OS_RELEASE_EL9
-        with self.assertRaises(requests.exceptions.RequestException) as err:
+        with self.assertRaises(YUMReposException) as err:
             self.repos1.get_data()
-            self.assertEqual(
-                err, '400 Bad Request'
-            )
+        self.assertEqual(
+            err.exception.__str__(),
+            "Error fetching YUM repos: 400 Bad Request"
+        )
 
     @mock.patch('argo_poem_tools.repos.subprocess.check_output')
     @mock.patch('argo_poem_tools.repos.YUMRepos.get_data')

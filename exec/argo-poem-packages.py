@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import argparse
-import configparser
 import logging
 import logging.handlers
 import subprocess
@@ -8,7 +7,9 @@ import sys
 
 import requests
 from argo_poem_tools.config import Config
-from argo_poem_tools.packages import Packages, PackageException
+from argo_poem_tools.exceptions import ConfigException, PackageException, \
+    YUMReposException
+from argo_poem_tools.packages import Packages
 from argo_poem_tools.repos import YUMRepos
 
 LOGFILE = "/var/log/argo-poem-tools/argo-poem-tools.log"
@@ -131,27 +132,13 @@ def main():
                 logger.info("The run finished successfully.")
                 sys.exit(0)
 
-    except requests.exceptions.ConnectionError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except requests.exceptions.RequestException as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except configparser.ParsingError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except configparser.NoSectionError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except configparser.NoOptionError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except PackageException as err:
+    except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.RequestException,
+            ConfigException,
+            YUMReposException,
+            PackageException
+    ) as err:
         logger.error(err)
         sys.exit(2)
 
