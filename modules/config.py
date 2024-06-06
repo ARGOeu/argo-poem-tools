@@ -31,31 +31,29 @@ class Config:
 
         return tenants
 
-    def _get_entries(self, entry):
-        data = dict()
+    def get_configuration(self):
+        configuration = dict()
         for tenant in self.tenants:
-            try:
-                if entry == "metricprofiles":
-                    profiles_string = self.conf.get(tenant, entry)
-                    profiles = [p.strip() for p in profiles_string.split(',')]
+            for entry in ["host", "token", "metricprofiles"]:
+                try:
+                    if entry == "metricprofiles":
+                        profiles_string = self.conf.get(tenant, entry)
+                        value = [
+                            p.strip() for p in profiles_string.split(',')
+                        ]
 
-                    data.update({tenant: profiles})
+                    else:
+                        value = self.conf.get(tenant, entry)
 
-                else:
-                    data.update({tenant: self.conf.get(tenant, entry)})
+                    if tenant in configuration:
+                        configuration[tenant].update({entry: value})
 
-            except configparser.NoOptionError:
-                raise ConfigException(
-                    f"Missing '{entry}' entry for tenant '{tenant}'"
-                )
+                    else:
+                        configuration.update({tenant: {entry: value}})
 
-        return data
+                except configparser.NoOptionError:
+                    raise ConfigException(
+                        f"Missing '{entry}' entry for tenant '{tenant}'"
+                    )
 
-    def get_hostnames(self):
-        return self._get_entries(entry="host")
-
-    def get_tokens(self):
-        return self._get_entries(entry="token")
-
-    def get_profiles(self):
-        return self._get_entries(entry="metricprofiles")
+        return configuration

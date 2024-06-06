@@ -57,25 +57,33 @@ class ConfigTests(unittest.TestCase):
         if os.path.isfile(mock_file_name):
             os.remove(mock_file_name)
 
-    def test_get_hostnames(self):
+    def test_get_configuration(self):
         with open(mock_file_name, 'w') as f:
             f.write(file_ok)
 
         config = Config(file=mock_file_name)
         self.assertEqual(
-            config.get_hostnames(), {
-                "tenant1": "tenant1.example.com",
-                "tenant2": "tenant2.example.com"
+            config.get_configuration(), {
+                "tenant1": {
+                    "host": "tenant1.example.com",
+                    "token": "some-token-1234",
+                    "metricprofiles": ["TEST_PROFILE1", "TEST_PROFILE2"]
+                },
+                "tenant2": {
+                    "host": "tenant2.example.com",
+                    "token": "some-token-5678",
+                    "metricprofiles": ["TEST_PROFILE3", "TEST_PROFILE4"]
+                }
             }
         )
 
-    def test_get_hostname_no_host(self):
+    def test_get_configuration_no_host(self):
         with open(mock_file_name, 'w') as f:
             f.write(file_missing_host)
 
         config = Config(file=mock_file_name)
         with self.assertRaises(ConfigException) as context:
-            config.get_hostnames()
+            config.get_configuration()
 
         self.assertEqual(
             context.exception.__str__(),
@@ -83,26 +91,14 @@ class ConfigTests(unittest.TestCase):
             "'tenant1'"
         )
 
-    def test_get_tokens(self):
-        with open(mock_file_name, 'w') as f:
-            f.write(file_ok)
-
-        config = Config(file=mock_file_name)
-        self.assertEqual(
-            config.get_tokens(), {
-                "tenant1": "some-token-1234",
-                "tenant2": "some-token-5678"
-            }
-        )
-
-    def test_get_token_missing(self):
+    def test_get_configuration_token_missing(self):
         with open(mock_file_name, 'w') as f:
             f.write(file_missing_token)
 
         config = Config(file=mock_file_name)
 
         with self.assertRaises(ConfigException) as context:
-            config.get_tokens()
+            config.get_configuration()
 
         self.assertEqual(
             context.exception.__str__(),
@@ -110,27 +106,14 @@ class ConfigTests(unittest.TestCase):
             "'tenant2'"
         )
 
-    def test_get_profiles(self):
-        with open(mock_file_name, 'w') as f:
-            f.write(file_ok)
-
-        config = Config(file=mock_file_name)
-
-        self.assertEqual(
-            config.get_profiles(), {
-                "tenant1": ['TEST_PROFILE1', 'TEST_PROFILE2'],
-                "tenant2": ["TEST_PROFILE3", "TEST_PROFILE4"]
-            }
-        )
-
-    def test_get_profiles_missing(self):
+    def test_get_configuration_profiles_missing(self):
         with open(mock_file_name, 'w') as f:
             f.write(file_missing_profiles)
 
         config = Config(file=mock_file_name)
 
         with self.assertRaises(ConfigException) as context:
-            config.get_profiles()
+            config.get_configuration()
 
         self.assertEqual(
             context.exception.__str__(),
