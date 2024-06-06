@@ -18,3 +18,8 @@ class PackageException(MyException):
 class POEMException(MyException):
     def __str__(self):
         return f"Error fetching YUM repos: {str(self.msg)}"
+
+
+class MergingException(MyException):
+    def __str__(self):
+        return f"Error merging POEM data: {str(self.msg)}"

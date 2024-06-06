@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 
-from argo_poem_tools.exceptions import POEMException
+from argo_poem_tools.exceptions import POEMException, MergingException
 from argo_poem_tools.poem import POEM, merge_tenants_data
 
 mock_data = {
@@ -184,65 +184,128 @@ def mock_request_json_without_details_key(*args, **kwargs):
 
 
 class MergeDataTests(unittest.TestCase):
-    def test_merge_data(self):
-        data = {
+    def setUp(self):
+        self.argo_content = (
+            "[argo-devel]\n"
+            "name=ARGO Product Repository\n"
+            "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/devel/rocky9/\n"
+            "gpgcheck=0\n"
+            "enabled=1\n"
+            "priority=99\n"
+            "exclude=\n"
+            "includepkgs="
+        )
+        self.epel_content = (
+            "[epel]\nname=Extra Packages for Enterprise "
+            "Linux 9 - $basearch\n#baseurl="
+            "http://download.fedoraproject.org/pub/epel"
+            "/9/$basearch\n"
+            "mirrorlist=https://mirrors.fedoraproject.org/"
+            "metalink?repo=epel-9&arch=$basearch\n"
+            "failovermethod=priority\n"
+            "enabled=1\n"
+            "gpgcheck=1\n"
+            "gpgkey=https://dl.fedoraproject.org/pub/epel"
+            "/RPM-GPG-KEY-EPEL-7\n"
+            "priority=11"
+        )
+        self.nordugrid_content = (
+            "[nordugrid-updates]\n"
+            "name=NorduGrid - $basearch - Updates\n"
+            "baseurl=http://download.nordugrid.org/repos/6"
+            "/centos/el6/$basearch/updates\n"
+            "enabled=1\n"
+            "gpgcheck=1\n"
+            "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
+            "nordugrid-6\n"
+            "priority=1\n"
+            "exclude=ca_*\n"
+        )
+        packages1 = [
+            {
+                "name": "argo-probe-argo-tools",
+                "version": "0.2.0"
+            },
+            {
+                "name": "argo-probe-cert",
+                "version": "2.0.1"
+            },
+            {
+                "name": "argo-probe-ams",
+                "version": "present"
+            },
+            {
+                "name": "argo-probe-poem",
+                "version": "present"
+            }
+        ]
+        packages2 = [
+            {
+                "name": "nagios-plugins-http",
+                "version": "present"
+            },
+            {
+                "name": "nagios-plugins-disk",
+                "version": "present"
+            },
+            {
+                "name": "nagios-plugins-procs",
+                "version": "present"
+            }
+        ]
+        packages3 = [
+            {
+                "name": "argo-probe-igtf",
+                "version": "2.1.0"
+            },
+            {
+                "name": "argo-probe-cert",
+                "version": "2.0.1"
+            },
+            {
+                "name": "argo-probe-ams-publisher",
+                "version": "present"
+            },
+            {
+                "name": "argo-probe-poem",
+                "version": "present"
+            }
+        ]
+        packages4 = [
+            {
+                "name": "nagios-plugins-dummy",
+                "version": "present"
+            },
+            {
+                "name": "nagios-plugins-procs",
+                "version": "present"
+            }
+        ]
+        packages5 = [
+            {
+                "name": "nordugrid-arc-nagios-plugins",
+                "version": "2.0.0"
+            }
+        ]
+        packages6 = [
+            {
+                "name": "argo-probe-argo-tools",
+                "version": "0.2.1"
+            },
+            {
+                "name": "argo-probe-poem",
+                "version": "present"
+            }
+        ]
+        self.data_ok = {
             "tenant1": {
                 "argo": {
-                    "content": "[argo-devel]\n"
-                               "name=ARGO Product Repository\n"
-                               "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
-                               "devel/rocky9/\n"
-                               "gpgcheck=0\n"
-                               "enabled=1\n"
-                               "priority=99\n"
-                               "exclude=\n"
-                               "includepkgs=",
-                    "packages": [
-                        {
-                            "name": "argo-probe-argo-tools",
-                            "version": "0.2.0"
-                        },
-                        {
-                            "name": "argo-probe-cert",
-                            "version": "2.0.1"
-                        },
-                        {
-                            "name": "argo-probe-ams",
-                            "version": "present"
-                        },
-                        {
-                            "name": "argo-probe-poem",
-                            "version": "present"
-                        }
-                    ]
+                    "content": self.argo_content,
+                    "packages": packages1
                 },
                 "epel": {
-                    "content": "[epel]\nname=Extra Packages for Enterprise "
-                               "Linux 9 - $basearch\n#baseurl="
-                               "http://download.fedoraproject.org/pub/epel"
-                               "/9/$basearch\n"
-                               "mirrorlist=https://mirrors.fedoraproject.org/"
-                               "metalink?repo=epel-9&arch=$basearch\n"
-                               "failovermethod=priority\n"
-                               "enabled=1\n"
-                               "gpgcheck=1\n"
-                               "gpgkey=https://dl.fedoraproject.org/pub/epel"
-                               "/RPM-GPG-KEY-EPEL-7\n"
-                               "priority=11",
-                    "packages": [
-                        {
-                            "name": "nagios-plugins-http",
-                            "version": "present"
-                        },
-                        {
-                            "name": "nagios-plugins-disk",
-                            "version": "present"
-                        },
-                        {
-                            "name": "nagios-plugins-procs",
-                            "version": "present"
-                        }
-                    ]
+                    "content": self.epel_content,
+                    "packages": packages2
                 },
                 "missing_packages": [
                     "argo-probe-grnet-agora (0.4)",
@@ -251,96 +314,47 @@ class MergeDataTests(unittest.TestCase):
             },
             "tenant2": {
                 "argo": {
-                    "content": "[argo-devel]\n"
-                               "name=ARGO Product Repository\n"
-                               "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
-                               "devel/rocky9/\n"
-                               "gpgcheck=0\n"
-                               "enabled=1\n"
-                               "priority=99\n"
-                               "exclude=\n"
-                               "includepkgs=",
-                    "packages": [
-                        {
-                            "name": "argo-probe-igtf",
-                            "version": "2.1.0"
-                        },
-                        {
-                            "name": "argo-probe-cert",
-                            "version": "2.0.1"
-                        },
-                        {
-                            "name": "argo-probe-ams-publisher",
-                            "version": "present"
-                        },
-                        {
-                            "name": "argo-probe-poem",
-                            "version": "present"
-                        }
-                    ]
+                    "content": self.argo_content,
+                    "packages": packages3
                 },
                 "epel": {
-                    "content": "[epel]\nname=Extra Packages for Enterprise "
-                               "Linux 9 - $basearch\n#baseurl="
-                               "http://download.fedoraproject.org/pub/epel"
-                               "/9/$basearch\n"
-                               "mirrorlist=https://mirrors.fedoraproject.org/"
-                               "metalink?repo=epel-9&arch=$basearch\n"
-                               "failovermethod=priority\n"
-                               "enabled=1\n"
-                               "gpgcheck=1\n"
-                               "gpgkey=https://dl.fedoraproject.org/pub/epel"
-                               "/RPM-GPG-KEY-EPEL-7\n"
-                               "priority=11",
-                    "packages": [
-                        {
-                            "name": "nagios-plugins-dummy",
-                            "version": "present"
-                        },
-                        {
-                            "name": "nagios-plugins-procs",
-                            "version": "present"
-                        }
-                    ]
+                    "content": self.epel_content,
+                    "packages": packages4
                 },
                 "nordugrid-updates": {
-                    "content": "[nordugrid-updates]\n"
-                               "name=NorduGrid - $basearch - Updates\n"
-                               "baseurl=http://download.nordugrid.org/repos/6"
-                               "/centos/el6/$basearch/updates\n"
-                               "enabled=1\n"
-                               "gpgcheck=1\n"
-                               "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
-                               "nordugrid-6\n"
-                               "priority=1\n"
-                               "exclude=ca_*\n",
-                    "packages": [
-                        {
-                            "name": "nordugrid-arc-nagios-plugins",
-                            "version": "2.0.0"
-                        }
-                    ]
+                    "content": self.nordugrid_content,
+                    "packages": packages5
                 },
                 "missing_packages": [
                     "nagios-plugins-bdii (1.0.14)",
                     "nagios-plugins-egi-notebooks (0.2.3)"
                 ]
             }
+
+        }
+        self.data_different_versions = {
+            "tenant1": {
+                "argo": {
+                    "content": self.argo_content,
+                    "packages": packages1
+                },
+                "missing_packages": []
+            },
+            "tenant2": {
+                "argo": {
+                    "content": self.argo_content,
+                    "packages": packages6
+                },
+                "missing_packages": []
+            }
         }
 
-        merged_data = merge_tenants_data(data=data)
+    def test_merge_data(self):
+        merged_data = merge_tenants_data(data=self.data_ok)
         self.assertEqual(
             merged_data, {
                 "argo": {
-                    "content": "[argo-devel]\n"
-                               "name=ARGO Product Repository\n"
-                               "baseurl=http://rpm-repo.argo.grnet.gr/ARGO/"
-                               "devel/rocky9/\n"
-                               "gpgcheck=0\n"
-                               "enabled=1\n"
-                               "priority=99\n"
-                               "exclude=\n"
-                               "includepkgs=",
+                    "content": self.argo_content,
                     "packages": [
                         {
                             "name": "argo-probe-ams",
@@ -369,18 +383,7 @@ class MergeDataTests(unittest.TestCase):
                     ]
                 },
                 "epel": {
-                    "content": "[epel]\nname=Extra Packages for Enterprise "
-                               "Linux 9 - $basearch\n#baseurl="
-                               "http://download.fedoraproject.org/pub/epel"
-                               "/9/$basearch\n"
-                               "mirrorlist=https://mirrors.fedoraproject.org/"
-                               "metalink?repo=epel-9&arch=$basearch\n"
-                               "failovermethod=priority\n"
-                               "enabled=1\n"
-                               "gpgcheck=1\n"
-                               "gpgkey=https://dl.fedoraproject.org/pub/epel"
-                               "/RPM-GPG-KEY-EPEL-7\n"
-                               "priority=11",
+                    "content": self.epel_content,
                     "packages": [
                         {
                             "name": "nagios-plugins-disk",
@@ -401,16 +404,7 @@ class MergeDataTests(unittest.TestCase):
                     ]
                 },
                 "nordugrid-updates": {
-                    "content": "[nordugrid-updates]\n"
-                               "name=NorduGrid - $basearch - Updates\n"
-                               "baseurl=http://download.nordugrid.org/repos/6"
-                               "/centos/el6/$basearch/updates\n"
-                               "enabled=1\n"
-                               "gpgcheck=1\n"
-                               "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-"
-                               "nordugrid-6\n"
-                               "priority=1\n"
-                               "exclude=ca_*\n",
+                    "content": self.nordugrid_content,
                     "packages": [
                         {
                             "name": "nordugrid-arc-nagios-plugins",
@@ -424,6 +418,15 @@ class MergeDataTests(unittest.TestCase):
                     "nagios-plugins-egi-notebooks (0.2.3)"
                 ]
             }
+        )
+
+    def test_merge_data_with_different_versions(self):
+        with self.assertRaises(MergingException) as context:
+            merge_tenants_data(data=self.data_different_versions)
+        self.assertEqual(
+            context.exception.__str__(),
+            "Error merging POEM data: Package 'argo-probe-argo-tools' must be "
+            "the same version across all tenants"
         )
 
 

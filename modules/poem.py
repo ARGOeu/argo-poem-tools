@@ -1,7 +1,7 @@
 import subprocess
 
 import requests
-from argo_poem_tools.exceptions import POEMException
+from argo_poem_tools.exceptions import POEMException, MergingException
 
 
 def merge_tenants_data(data):
@@ -29,6 +29,15 @@ def merge_tenants_data(data):
                     for package in info["packages"]:
                         if package["name"] not in existing_names:
                             existing_packages.append(package)
+
+                        if (
+                                package["name"] in existing_names and
+                                package not in existing_packages
+                        ):
+                            raise MergingException(
+                                f"Package '{package['name']}' must be the same "
+                                f"version across all tenants"
+                            )
 
                     merged_data[name]["packages"] = sorted(
                         existing_packages, key=lambda p: p["name"]
