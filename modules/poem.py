@@ -4,6 +4,39 @@ import requests
 from argo_poem_tools.exceptions import POEMException
 
 
+def merge_tenants_data(data):
+    merged_data = dict()
+
+    for tenant, repos in data.items():
+        for name, info in repos.items():
+            if name not in merged_data:
+                merged_data.update({name: info})
+
+            else:
+                if name == "missing_packages":
+                    incoming_missing = set(repos[name])
+                    existing_missing = set(merged_data[name])
+                    merged_data["missing_packages"] = sorted(
+                        list(incoming_missing.union(existing_missing))
+                    )
+
+                else:
+                    existing_packages = merged_data[name]["packages"]
+                    existing_names = [
+                        item["name"] for item in existing_packages
+                    ]
+
+                    for package in info["packages"]:
+                        if package["name"] not in existing_names:
+                            existing_packages.append(package)
+
+                    merged_data[name]["packages"] = sorted(
+                        existing_packages, key=lambda p: p["name"]
+                    )
+
+    return merged_data
+
+
 class POEM:
     def __init__(self, hostname, token, profiles):
         self.hostname = hostname
