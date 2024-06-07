@@ -75,7 +75,7 @@ def main():
             )
 
             poem = POEM(
-                hostname=configuration["hostname"],
+                hostname=configuration["host"],
                 token=configuration["token"],
                 profiles=configuration["metricprofiles"]
             )
