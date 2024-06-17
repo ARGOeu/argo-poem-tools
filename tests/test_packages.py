@@ -2,8 +2,8 @@ import subprocess
 import unittest
 from unittest import mock
 
-from argo_poem_tools.packages import Packages, _compare_versions, _compare_vr, \
-    PackageException
+from argo_poem_tools.exceptions import PackageException
+from argo_poem_tools.packages import Packages, _compare_versions, _compare_vr
 
 data = {
     "argo-devel": {
@@ -751,8 +751,12 @@ class PackageTests(unittest.TestCase):
         mock_get.side_effect = mock_func_exception
         mock_check_call.side_effect = mock_func
         mock_lock.side_effect = mock_func
-        with self.assertRaises(PackageException):
+        with self.assertRaises(PackageException) as context:
             self.pkgs.install()
+        self.assertEqual(
+            context.exception.__str__(),
+            "Error installing packages: An error."
+        )
         self.assertFalse(mock_check_call.called)
         self.assertEqual(mock_lock.call_count, 1)
 
@@ -923,8 +927,12 @@ class PackageTests(unittest.TestCase):
         mock_get.side_effect = mock_func_exception
         mock_check_call.side_effect = mock_func
         mock_lock.side_effect = mock_func
-        with self.assertRaises(PackageException):
+        with self.assertRaises(PackageException) as context:
             self.pkgs.no_op()
+        self.assertEqual(
+            context.exception.__str__(),
+            "Error analysing packages: An error."
+        )
         self.assertFalse(mock_check_call.called)
         self.assertEqual(mock_lock.call_count, 1)
 

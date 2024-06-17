@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import argparse
-import configparser
 import logging
 import logging.handlers
 import subprocess
@@ -8,7 +7,10 @@ import sys
 
 import requests
 from argo_poem_tools.config import Config
-from argo_poem_tools.packages import Packages, PackageException
+from argo_poem_tools.exceptions import ConfigException, PackageException, \
+    POEMException, MergingException
+from argo_poem_tools.packages import Packages
+from argo_poem_tools.poem import POEM, merge_tenants_data
 from argo_poem_tools.repos import YUMRepos
 
 LOGFILE = "/var/log/argo-poem-tools/argo-poem-tools.log"
@@ -63,95 +65,84 @@ def main():
         subprocess.call(['yum', 'clean', 'all'])
 
         config = Config()
-        token = config.get_token()
-        hostname = config.get_hostname()
-        profiles = config.get_profiles()
+        tenants_configurations = config.get_configuration()
 
-        logger.info(
-            'Sending request for profile(s): ' + ', '.join(profiles)
-        )
+        tenant_repos = dict()
+        for tenant, configuration in tenants_configurations.items():
+            logger.info(
+                f"{tenant}: Sending request for profile(s): "
+                f"{', '.join(configuration['metricprofiles'])}"
+            )
+
+            poem = POEM(
+                hostname=configuration["host"],
+                token=configuration["token"],
+                profiles=configuration["metricprofiles"]
+            )
+
+            tenant_repos.update({
+                tenant: poem.get_data(include_internal=include_internal)
+            })
+
+        data = merge_tenants_data(tenant_repos)
+
         if backup_repos:
-            repos = YUMRepos(
-                hostname=hostname, token=token, profiles=profiles,
-                override=False
-            )
+            repos = YUMRepos(data=data, override=False)
 
         else:
-            repos = YUMRepos(hostname=hostname, token=token, profiles=profiles)
+            repos = YUMRepos(data=data)
 
-        data = repos.get_data(include_internal=include_internal)
+        logger.info("Creating YUM repo files...")
 
-        if not data:
-            logger.warning(
-                'No data for given metric profile(s): ' +
-                ', '.join(profiles)
-            )
-            sys.exit(2)
+        files = repos.create_file(include_internal=include_internal)
+
+        logger.info(f"Created files: {'; '.join(files)}")
+
+        pkg = Packages(data)
+
+        if noop:
+            info_msg, warn_msg = pkg.no_op()
 
         else:
-            logger.info('Creating YUM repo files...')
+            info_msg, warn_msg = pkg.install()
 
-            files = repos.create_file(include_internal=include_internal)
+        # if there were repo files backed up, now they are restored
+        repos.clean()
 
-            logger.info('Created files: ' + '; '.join(files))
+        if info_msg:
+            for msg in info_msg:
+                logger.info(msg)
 
-            pkg = Packages(data)
+        if warn_msg:
+            for msg in warn_msg:
+                logger.warning(msg)
 
-            if noop:
-                info_msg, warn_msg = pkg.no_op()
+            sys.exit(1)
 
-            else:
-                info_msg, warn_msg = pkg.install()
+        else:
+            missing_packages_msg = ''
+            if repos.missing_packages:
+                missing_packages_msg = (
+                    f"Missing packages for given distro: "
+                    f"{', '.join(repos.missing_packages)}"
+                )
+                logger.warning(missing_packages_msg)
 
-            # if there were repo files backed up, now they are restored
-            repos.clean()
+            if not noop:
+                if missing_packages_msg:
+                    print(f"WARNING: {missing_packages_msg}")
 
-            if info_msg:
-                for msg in info_msg:
-                    logger.info(msg)
+            logger.info("The run finished successfully.")
+            sys.exit(0)
 
-            if warn_msg:
-                for msg in warn_msg:
-                    logger.warning(msg)
-
-                sys.exit(1)
-
-            else:
-                missing_packages_msg = ''
-                if repos.missing_packages:
-                    missing_packages_msg = \
-                        'Missing packages for given distro: ' + \
-                        ', '.join(repos.missing_packages)
-                    logger.warning(missing_packages_msg)
-
-                if not noop:
-                    if missing_packages_msg:
-                        print('WARNING: ' + missing_packages_msg)
-
-                logger.info("The run finished successfully.")
-                sys.exit(0)
-
-    except requests.exceptions.ConnectionError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except requests.exceptions.RequestException as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except configparser.ParsingError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except configparser.NoSectionError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except configparser.NoOptionError as err:
-        logger.error(err)
-        sys.exit(2)
-
-    except PackageException as err:
+    except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.RequestException,
+            ConfigException,
+            POEMException,
+            MergingException,
+            PackageException
+    ) as err:
         logger.error(err)
         sys.exit(2)
 

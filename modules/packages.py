@@ -1,6 +1,7 @@
 import subprocess
 from re import compile
 
+from argo_poem_tools.exceptions import PackageException
 
 _rpm_re = compile('(\S+)-(?:(\d*):)?(.*)-(~?\w+[\w.]*)')
 
@@ -67,10 +68,6 @@ def _compare_vr(vr1, vr2):
 
     else:
         return _compare_versions(v1, v2)
-
-
-class PackageException(Exception):
-    pass
 
 
 class Packages:
@@ -455,9 +452,7 @@ class Packages:
 
         except Exception as e:
             self._failsafe_lock_versions()
-            raise PackageException('Error installing packages: {}'.format(
-                str(e))
-            )
+            raise PackageException(f"Error installing packages: {str(e)}")
 
     def no_op(self):
         try:
@@ -520,9 +515,7 @@ class Packages:
 
         except Exception as e:
             self._failsafe_lock_versions()
-            raise PackageException(
-                'Error analysing packages: {}'.format(str(e))
-            )
+            raise PackageException(f"Error analysing packages: {str(e)}")
 
     def _lock_versions(self):
         self._get_locked_versions()
