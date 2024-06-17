@@ -2,7 +2,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.2.7
+Version:       0.3.0
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0
@@ -52,6 +52,8 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0755,root,root) %dir %{_localstatedir}/log/argo-poem-tools/
 
 %changelog
+* Mon Jun 17 2024 Katarina Zailac <kzailac@srce.hr> - 0.3.7-1%{?dist}
+- ARGO-4661 Make tool multi-tenant aware
 * Thu Apr 4 2024 Katarina Zailac <kzailac@srce.hr> - 0.2.7-1%{?dist}
 - ARGO-4502 Generalize method for fetching distro name
 * Thu Aug 3 2023 Katarina Zailac <kzailac@srce.hr> - 0.2.6-1%{?dist}
