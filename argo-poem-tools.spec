@@ -12,14 +12,7 @@ Prefix:        %{_prefix}
 BuildArch:     noarch
 
 BuildRequires: python3-devel
-
-%if 0%{?el7}
-Requires:      python36-requests
-
-%else
 Requires:      python3-requests
-
-%endif
 
 
 %description
