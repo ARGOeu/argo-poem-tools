@@ -26,15 +26,9 @@ def main():
         '--backup-repos', action='store_true', dest='backup',
         help='backup/restore yum repos instead overriding them'
     )
-    parser.add_argument(
-        "--include-internal", action="store_true", dest="include_internal",
-        help="install probes for internal metrics as well as the ones in "
-             "metric profiles"
-    )
     args = parser.parse_args()
     noop = args.noop
     backup_repos = args.backup
-    include_internal = args.include_internal
 
     logger = logging.getLogger("argo-poem-packages")
     logger.setLevel(logging.INFO)
@@ -80,9 +74,7 @@ def main():
                 profiles=configuration["metricprofiles"]
             )
 
-            tenant_repos.update({
-                tenant: poem.get_data(include_internal=include_internal)
-            })
+            tenant_repos.update({tenant: poem.get_data()})
 
         data = merge_tenants_data(tenant_repos)
 
@@ -94,7 +86,7 @@ def main():
 
         logger.info("Creating YUM repo files...")
 
-        files = repos.create_file(include_internal=include_internal)
+        files = repos.create_file()
 
         logger.info(f"Created files: {'; '.join(files)}")
 
