@@ -49,29 +49,6 @@ class YUMReposTests(unittest.TestCase):
             content2, mock_data['data']['nordugrid-updates']['content']
         )
 
-    def test_create_file_including_internal(self):
-        files = self.repos1.create_file(include_internal=True)
-        self.assertEqual(
-            files,
-            [os.path.join(os.getcwd(), 'argo-devel.repo'),
-             os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
-        )
-        self.assertTrue(os.path.exists('argo-devel.repo'))
-        self.assertTrue(os.path.exists('nordugrid-updates.repo'))
-
-        with open('argo-devel.repo', 'r') as f:
-            content1 = f.read()
-
-        with open('nordugrid-updates.repo', 'r') as f:
-            content2 = f.read()
-
-        self.assertEqual(
-            content1, mock_data['data']['argo-devel']['content']
-        )
-        self.assertEqual(
-            content2, mock_data['data']['nordugrid-updates']['content']
-        )
-
     @mock.patch('argo_poem_tools.repos.shutil.copyfile')
     @mock.patch('argo_poem_tools.repos.os.path.isfile')
     @mock.patch('argo_poem_tools.repos.os.makedirs')
@@ -109,40 +86,6 @@ class YUMReposTests(unittest.TestCase):
     @mock.patch('argo_poem_tools.repos.shutil.copyfile')
     @mock.patch('argo_poem_tools.repos.os.path.isfile')
     @mock.patch('argo_poem_tools.repos.os.makedirs')
-    def test_do_override_file_which_already_exists_including_internal(
-            self, mock_mkdir, mock_isfile, mock_cp
-    ):
-        with open('argo-devel.repo', 'w') as f:
-            f.write('test')
-
-        files = self.repos1.create_file(include_internal=True)
-        self.assertFalse(mock_mkdir.called)
-        self.assertFalse(mock_isfile.called)
-        self.assertFalse(mock_cp.called)
-        self.assertEqual(
-            files,
-            [os.path.join(os.getcwd(), 'argo-devel.repo'),
-             os.path.join(os.getcwd(), 'nordugrid-updates.repo')]
-        )
-        self.assertTrue(os.path.exists('argo-devel.repo'))
-        self.assertTrue(os.path.exists('nordugrid-updates.repo'))
-
-        with open('argo-devel.repo', 'r') as f:
-            content1 = f.read()
-
-        with open('nordugrid-updates.repo', 'r') as f:
-            content2 = f.read()
-
-        self.assertEqual(
-            content1, mock_data['data']['argo-devel']['content']
-        )
-        self.assertEqual(
-            content2, mock_data['data']['nordugrid-updates']['content']
-        )
-
-    @mock.patch('argo_poem_tools.repos.shutil.copyfile')
-    @mock.patch('argo_poem_tools.repos.os.path.isfile')
-    @mock.patch('argo_poem_tools.repos.os.makedirs')
     def test_do_not_override_file_which_already_exists(
             self, mock_mkdir, mock_isfile, mock_copy
     ):
@@ -151,47 +94,6 @@ class YUMReposTests(unittest.TestCase):
             f.write('test')
 
         files = self.repos2.create_file()
-        self.assertEqual(mock_mkdir.call_count, 2)
-        mock_mkdir.assert_called_with('/tmp' + os.getcwd(), exist_ok=True)
-        file1 = os.path.join(os.getcwd(), 'argo-devel.repo')
-        file2 = os.path.join(os.getcwd(), 'nordugrid-updates.repo')
-        self.assertEqual(mock_isfile.call_count, 2)
-        mock_isfile.assert_has_calls(
-            [mock.call(file1), mock.call(file2)], any_order=True
-        )
-        self.assertEqual(mock_copy.call_count, 2)
-        mock_copy.assert_has_calls([
-            mock.call(file1, '/tmp' + file1),
-            mock.call(file2, '/tmp' + file2)
-        ], any_order=True)
-        self.assertEqual(files, [file1, file2])
-        self.assertTrue(os.path.exists('argo-devel.repo'))
-        self.assertTrue(os.path.exists('nordugrid-updates.repo'))
-
-        with open('argo-devel.repo', 'r') as f:
-            content1 = f.read()
-
-        with open('nordugrid-updates.repo', 'r') as f:
-            content2 = f.read()
-
-        self.assertEqual(
-            content1, mock_data['data']['argo-devel']['content']
-        )
-        self.assertEqual(
-            content2, mock_data['data']['nordugrid-updates']['content']
-        )
-
-    @mock.patch('argo_poem_tools.repos.shutil.copyfile')
-    @mock.patch('argo_poem_tools.repos.os.path.isfile')
-    @mock.patch('argo_poem_tools.repos.os.makedirs')
-    def test_do_not_override_file_which_already_exists_including_internal(
-            self, mock_mkdir, mock_isfile, mock_copy
-    ):
-        mock_isfile.return_value = True
-        with open('argo-devel.repo', 'w') as f:
-            f.write('test')
-
-        files = self.repos2.create_file(include_internal=True)
         self.assertEqual(mock_mkdir.call_count, 2)
         mock_mkdir.assert_called_with('/tmp' + os.getcwd(), exist_ok=True)
         file1 = os.path.join(os.getcwd(), 'argo-devel.repo')

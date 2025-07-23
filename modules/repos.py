@@ -10,7 +10,7 @@ class YUMRepos:
         self.override = override
         self.missing_packages = None
 
-    def create_file(self, include_internal=False):
+    def create_file(self):
         files = []
         for key, value in self.data.items():
             title = key
