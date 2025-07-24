@@ -23,3 +23,4 @@ clean:
 	rm -rf dist
 	rm -rf **/*.pyc
 	rm -rf **/*.pyo
+	rm -rf argo_poem_tools.egg-info/
