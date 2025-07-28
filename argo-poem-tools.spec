@@ -2,7 +2,7 @@
 
 Summary:       Script installs packages on ARGO mon boxes.
 Name:          argo-poem-tools
-Version:       0.3.0
+Version:       0.4.0
 Release:       1%{?dist}
 Source0:       %{name}-%{version}.tar.gz
 License:       ASL 2.0

@@ -1,6 +1,12 @@
 # Changelog
 
-## [0.3.7-1] - 2024-06-17
+## [0.4.0-1] - 2025-07-28
+
+### Changed
+
+* ARGO-5031 Remove unnecessary argument
+
+## [0.3.0-1] - 2024-06-17
 
 ### Changed
 
