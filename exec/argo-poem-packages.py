@@ -74,7 +74,14 @@ def main():
                 profiles=configuration["metricprofiles"]
             )
 
-            tenant_repos.update({tenant: poem.get_data()})
+            try:
+                tenant_data = poem.get_data()
+                tenant_repos.update({tenant: tenant_data})
+                
+                logger.info(f"{tenant}: Successful request.")
+
+            except POEMException as e:
+                logger.warning(f"{tenant}: Unsuccessful request. Skipping.")
 
         data = merge_tenants_data(tenant_repos)
 

@@ -91,7 +91,7 @@ class POEM:
     def _refine_list_of_profiles(self):
         return f"[{', '.join(self.profiles)}]"
 
-    def get_data(self):
+    def get_data(self) -> list:
         headers = {
             'x-api-key': self.token,
             'profiles': self._refine_list_of_profiles()
