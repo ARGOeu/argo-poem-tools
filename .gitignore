@@ -1,0 +1,6 @@
+# Ignore caches
+.vscode/
+__pycache__/
+
+# Ignore symlink
+argo_poem_tools
